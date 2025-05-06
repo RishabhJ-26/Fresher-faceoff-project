@@ -3,81 +3,106 @@
 @tailwind utilities;
 
 body {
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: var(--font-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol");
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @layer base {
   :root {
-    --background: 210 20% 98%; /* Brighter Light Gray */
-    --foreground: 210 15% 20%; /* Slightly softer Dark Gray */
+    /* Calm Blue: #3498db -> hsl(207, 68%, 53%) */
+    /* Light Gray: #ecf0f1 -> hsl(200, 17%, 94%) */
+    /* Teal: #1abc9c -> hsl(168, 76%, 42%) */
+
+    --background: 200 17% 96%; /* Lighter Gray, close to #ecf0f1 but slightly brighter for better contrast */
+    --foreground: 210 15% 25%; /* Dark Gray for text */
+
     --card: 0 0% 100%;
     --card-foreground: 210 15% 20%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 210 15% 20%;
-    --primary: 207 75% 55%; /* Slightly more vibrant Calm Blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 94%; /* Lighter gray for secondary elements */
-    --secondary-foreground: 210 15% 25%;
-    --muted: 210 30% 90%; /* Adjusted muted color */
-    --muted-foreground: 210 10% 45%; /* Softer muted foreground */
-    --accent: 170 70% 45%; /* Slightly deeper Teal */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 75% 55%; /* Slightly softer red */
+
+    --primary: 207 68% 53%; /* #3498db */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 200 25% 92%; /* Slightly darker than background, for subtle separation */
+    --secondary-foreground: 210 15% 30%;
+
+    --muted: 200 20% 88%; 
+    --muted-foreground: 210 10% 45%;
+
+    --accent: 168 76% 42%; /* #1abc9c */
+    --accent-foreground: 0 0% 100%; /* White */
+
+    --destructive: 0 70% 55%; 
     --destructive-foreground: 0 0% 98%;
-    --border: 210 20% 88%; /* Adjusted border color for subtlety */
-    --input: 210 20% 92%; /* Lighter input background */
-    --ring: 207 70% 53%; /* Calm Blue for ring - can be accent too */
-    --chart-1: 207 70% 53%;
-    --chart-2: 170 70% 42%;
-    --chart-3: 207 70% 65%;
-    --chart-4: 170 70% 55%;
-    --chart-5: 207 70% 75%;
-    --radius: 0.75rem; /* Slightly larger radius for modern feel */
-    --sidebar-background: 210 20% 96%; 
+
+    --border: 200 15% 85%; 
+    --input: 0 0% 100%; /* White input background for clean look */
+    --ring: 207 68% 53%; /* Primary color for focus rings */
+
+    --chart-1: 207 68% 53%;
+    --chart-2: 168 76% 42%;
+    --chart-3: 207 60% 65%;
+    --chart-4: 168 65% 55%;
+    --chart-5: 207 50% 75%;
+
+    --radius: 0.75rem; /* Slightly larger radius */
+
+    --sidebar-background: 200 17% 95%; 
     --sidebar-foreground: 210 15% 20%;
-    --sidebar-primary: 207 75% 55%;
+    --sidebar-primary: 207 68% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 170 70% 45%;
+    --sidebar-accent: 168 76% 42%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 20% 85%;
-    --sidebar-ring: 207 70% 53%;
+    --sidebar-border: 200 15% 88%;
+    --sidebar-ring: 207 68% 53%;
   }
 
   .dark {
-    --background: 210 12% 12%; /* Darker Gray for background */
-    --foreground: 210 20% 95%; /* Lighter Gray for text */
-    --card: 210 10% 17%; /* Slightly lighter card background */
-    --card-foreground: 210 20% 95%;
-    --popover: 210 10% 17%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 207 70% 58%; /* Adjusted blue for dark mode contrast */
+    --background: 210 10% 10%; 
+    --foreground: 200 15% 90%;
+
+    --card: 210 9% 15%;
+    --card-foreground: 200 15% 90%;
+
+    --popover: 210 9% 15%;
+    --popover-foreground: 200 15% 90%;
+
+    --primary: 207 70% 58%; /* Slightly brighter blue for dark mode */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 10% 22%; /* Darker gray for secondary elements */
-    --secondary-foreground: 210 20% 90%;
-    --muted: 210 10% 22%;
-    --muted-foreground: 210 15% 60%; /* Adjusted muted foreground for dark */
-    --accent: 170 65% 50%; /* Adjusted teal for dark mode */
+
+    --secondary: 210 8% 20%;
+    --secondary-foreground: 200 15% 85%;
+
+    --muted: 210 8% 22%;
+    --muted-foreground: 200 10% 60%;
+
+    --accent: 168 70% 48%; /* Slightly brighter teal for dark mode */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 70% 50%; /* Adjusted destructive for dark */
+
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 10% 28%; /* Adjusted border for dark mode */
-    --input: 210 10% 25%; /* Darker input for dark mode */
-    --ring: 170 65% 50%; /* Accent for ring in dark mode */
+
+    --border: 210 10% 25%;
+    --input: 210 10% 20%;
+    --ring: 168 70% 48%; /* Accent for ring in dark mode */
+
     --chart-1: 207 70% 58%;
-    --chart-2: 170 65% 50%;
-    --chart-3: 207 70% 70%;
-    --chart-4: 170 65% 60%;
-    --chart-5: 207 70% 80%;
-    --sidebar-background: 210 12% 10%; 
-    --sidebar-foreground: 210 20% 95%;
+    --chart-2: 168 70% 48%;
+    --chart-3: 207 60% 70%;
+    --chart-4: 168 60% 60%;
+    --chart-5: 207 50% 80%;
+
+    --sidebar-background: 210 10% 8%; 
+    --sidebar-foreground: 200 15% 90%;
     --sidebar-primary: 207 70% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 170 65% 50%;
+    --sidebar-accent: 168 70% 48%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 10% 25%;
-    --sidebar-ring: 170 65% 50%;
+    --sidebar-border: 210 10% 22%;
+    --sidebar-ring: 168 70% 48%;
   }
 }
 
@@ -93,9 +118,17 @@ body {
 /* Custom utility for subtle shadow */
 @layer utilities {
   .shadow-soft {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px -1px hsla(var(--foreground), 0.05), 0 1px 3px -1px hsla(var(--foreground), 0.03);
   }
   .shadow-strong {
-     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+     box-shadow: 0 6px 15px -3px hsla(var(--foreground), 0.07), 0 4px 6px -4px hsla(var(--foreground), 0.05);
+  }
+  .shadow-t-strong {
+    box-shadow: 0 -6px 15px -3px hsla(var(--foreground), 0.07), 0 -4px 6px -4px hsla(var(--foreground), 0.05);
+  }
+   .shadow-inner {
+    box-shadow: inset 0 1px 3px hsla(var(--foreground), 0.08);
   }
 }
+
+    
