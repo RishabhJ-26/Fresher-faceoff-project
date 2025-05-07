@@ -82,30 +82,13 @@ export default {
   				to: {
   					height: '0'
   				}
-  			},
-        'gradient-animation': {
-          '0%': { 'background-position': '0% 50%' },
-          '50%': { 'background-position': '100% 50%' },
-          '100%': { 'background-position': '0% 50%' },
-        },
-        'fade-in': {
-          from: { opacity: '0', transform: 'translateY(10px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        'slide-in-bottom': {
-          from: { opacity: '0', transform: 'translateY(20px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
+  			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-        'background-gradient': 'gradient-animation 15s ease infinite',
-        'fade-in': 'fade-in 0.5s ease-out forwards',
-        'slide-in-bottom': 'slide-in-bottom 0.3s ease-out forwards',
+  			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
   	}
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-```

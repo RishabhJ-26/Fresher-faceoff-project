@@ -177,8 +177,10 @@ export function FresherFaceoffPage() {
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
-      const { scrollHeight } = chatScrollAreaRef.current.querySelector('div') as HTMLDivElement;
-      chatScrollAreaRef.current.querySelector('div')?.scrollTo(0, scrollHeight);
+      const viewport = chatScrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTo(0, viewport.scrollHeight);
+      }
     }
   }, [messages]);
 
@@ -233,7 +235,7 @@ export function FresherFaceoffPage() {
   const handleDisconnect = () => {
     setIsConnected(false);
     setMessages([]);
-    setInterviewId(""); // Clear interview ID on disconnect
+    setInterviewId(""); 
     toast({ title: "Disconnected", description: "You have left the interview." });
   };
 
@@ -242,7 +244,6 @@ export function FresherFaceoffPage() {
       const newMsg: Message = { id: Date.now().toString(), text: newMessage, sender: "me", timestamp: new Date() };
       setMessages(prevMessages => [...prevMessages, newMsg]);
       
-      // Simulate peer receiving message and responding
       setTimeout(() => {
         const peerResponse: Message = {id: (Date.now()+1).toString(), text: `Echo: ${newMessage}`, sender: "peer", timestamp: new Date() };
         setMessages(prev => [...prev, peerResponse]);
@@ -285,7 +286,7 @@ export function FresherFaceoffPage() {
   const toggleShareScreen = async () => {
     if (!isScreenShared) { 
         if(localStreamRef.current){
-            stopStream(localStreamRef.current); 
+            localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null; 
         }
         if (localVideoRef.current) localVideoRef.current.srcObject = null; 
@@ -297,8 +298,10 @@ export function FresherFaceoffPage() {
            await startCameraStream(); 
         }
     } else { 
-        stopStream(screenStreamRef.current);
-        screenStreamRef.current = null;
+        if(screenStreamRef.current){
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+        }
         setIsScreenShared(false);
         await startCameraStream(); 
         toast({ title: "Screen Sharing Stopped", description: "You stopped sharing your screen." });
@@ -428,7 +431,7 @@ export function FresherFaceoffPage() {
               <MessageSquare className="mr-2 h-5 w-5" /> Chat
             </CardTitle>
           </CardHeader>
-          <ScrollArea className="flex-1 p-3 bg-background/30" ref={chatScrollAreaRef}>
+          <ScrollArea className="flex-1 p-3 bg-background/30" viewportRef={chatScrollAreaRef}>
             <div className="space-y-3.5">
               {messages.map((msg) => (
                 <div
@@ -529,4 +532,3 @@ export function FresherFaceoffPage() {
     </div>
   );
 }
-```
