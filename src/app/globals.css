@@ -4,60 +4,61 @@
 
 @layer base {
   :root {
-    /* Calm Blue: #3498db -> hsl(207, 68%, 53%) */
-    /* Light Gray: #ecf0f1 -> hsl(200, 17%, 94%) */
-    /* Teal: #1abc9c -> hsl(168, 76%, 42%) */
+    /* Theme colors based on proposal */
+    /* Primary color: Calm blue (#3498db) -> hsl(207, 68%, 53%) */
+    /* Secondary color: Light gray (#ecf0f1) -> hsl(200, 17%, 94%) - Using 96% for main background */
+    /* Accent: Teal (#1abc9c) -> hsl(168, 76%, 42%) */
 
-    --background: 200 17% 96%; /* Lighter Gray, close to #ecf0f1 but slightly brighter for better contrast */
+    --background: 200 17% 96%; /* Light Gray for background */
     --foreground: 210 15% 25%; /* Dark Gray for text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 210 15% 20%;
+    --card: 0 0% 100%; /* White for card backgrounds */
+    --card-foreground: 210 15% 20%; /* Darker gray for card text */
 
     --popover: 0 0% 100%;
     --popover-foreground: 210 15% 20%;
 
-    --primary: 207 68% 53%; /* #3498db */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 207 68% 53%; /* Calm Blue */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
 
-    --secondary: 200 25% 92%; /* Corrected: Slightly darker than background, for subtle separation */
-    --secondary-foreground: 210 15% 30%;
+    --secondary: 200 25% 92%; /* A slightly off-white/light gray for secondary elements, distinct from main background */
+    --secondary-foreground: 210 15% 30%; /* Dark gray for text on secondary */
 
-    --muted: 200 20% 88%; 
-    --muted-foreground: 210 10% 45%;
+    --muted: 200 20% 88%; /* Muted gray for less prominent elements */
+    --muted-foreground: 210 10% 45%; /* Softer text color for muted elements */
 
-    --accent: 168 76% 42%; /* #1abc9c */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 168 76% 42%; /* Teal */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
 
-    --destructive: 0 70% 55%; 
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 55%; /* Standard destructive red */
+    --destructive-foreground: 0 0% 98%; /* Light text on destructive */
 
-    --border: 200 15% 85%; 
-    --input: 0 0% 100%; /* White input background for clean look */
+    --border: 200 15% 85%; /* Light gray for borders */
+    --input: 0 0% 100%; /* White background for input fields */
     --ring: 207 68% 53%; /* Primary color for focus rings */
 
-    --chart-1: 207 68% 53%;
-    --chart-2: 168 76% 42%;
-    --chart-3: 207 60% 65%;
-    --chart-4: 168 65% 55%;
-    --chart-5: 207 50% 75%;
+    --radius: 0.75rem; /* Consistent rounded corners */
 
-    --radius: 0.75rem; /* Slightly larger radius */
+    --chart-1: hsl(var(--primary));
+    --chart-2: hsl(var(--accent));
+    --chart-3: hsl(207 60% 65%);
+    --chart-4: hsl(168 65% 55%);
+    --chart-5: hsl(207 50% 75%);
 
-    --sidebar-background: 200 17% 95%; 
+    --sidebar-background: 200 17% 95%;
     --sidebar-foreground: 210 15% 20%;
-    --sidebar-primary: 207 68% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 76% 42%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--accent));
+    --sidebar-accent-foreground: hsl(var(--accent-foreground));
     --sidebar-border: 200 15% 88%;
-    --sidebar-ring: 207 68% 53%;
-    
+    --sidebar-ring: hsl(var(--ring));
+
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   }
 
   .dark {
-    --background: 210 10% 10%; 
+    --background: 210 10% 10%;
     --foreground: 200 15% 90%;
 
     --card: 210 9% 15%;
@@ -83,79 +84,57 @@
 
     --border: 210 10% 25%;
     --input: 210 10% 20%;
-    --ring: 168 70% 48%; /* Accent for ring in dark mode */
+    --ring: 168 70% 48%; /* Accent color for focus rings in dark mode */
 
-    --chart-1: 207 70% 58%;
-    --chart-2: 168 70% 48%;
-    --chart-3: 207 60% 70%;
-    --chart-4: 168 60% 60%;
-    --chart-5: 207 50% 80%;
+    --chart-1: hsl(var(--primary));
+    --chart-2: hsl(var(--accent));
+    --chart-3: hsl(207 60% 70%);
+    --chart-4: hsl(168 60% 60%);
+    --chart-5: hsl(207 50% 80%);
 
-    --sidebar-background: 210 10% 8%; 
+    --sidebar-background: 210 10% 8%;
     --sidebar-foreground: 200 15% 90%;
-    --sidebar-primary: 207 70% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 70% 48%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--accent));
+    --sidebar-accent-foreground: hsl(var(--accent-foreground));
     --sidebar-border: 210 10% 22%;
-    --sidebar-ring: 168 70% 48%;
+    --sidebar-ring: hsl(var(--ring));
   }
 
   * {
-   border-color: var(--border);
+    border-color: hsl(var(--border));
   }
-
   body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
-/* Custom utility for subtle shadow */
 @layer utilities {
   .shadow-soft {
     box-shadow: 0 2px 8px -1px hsla(var(--foreground) / 0.05), 0 1px 3px -1px hsla(var(--foreground) / 0.03);
   }
   .shadow-strong {
-     box-shadow: 0 6px 15px -3px hsla(var(--foreground) / 0.07), 0 4px 6px -4px hsla(var(--foreground) / 0.05);
+    box-shadow: 0 6px 15px -3px hsla(var(--foreground) / 0.07), 0 4px 6px -4px hsla(var(--foreground) / 0.05);
   }
   .shadow-t-strong {
     box-shadow: 0 -6px 15px -3px hsla(var(--foreground) / 0.07), 0 -4px 6px -4px hsla(var(--foreground) / 0.05);
   }
-   .shadow-inner {
+  .shadow-inner {
     box-shadow: inset 0 1px 3px hsla(var(--foreground) / 0.08);
   }
 
-  /* Animation utilities */
-  .animate-background-gradient {
-    background-size: 200% 200%;
-    animation: gradient-animation 15s ease infinite;
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.5s ease-out forwards;
-  }
-
-  .animate-slide-in-bottom {
-    animation: slide-in-bottom 0.3s ease-out forwards;
-  }
+  /* Animation utility classes (.animate-background-gradient, .animate-fade-in, .animate-slide-in-bottom) 
+     are now generated by Tailwind based on tailwind.config.ts definitions.
+     No need to define them here if they are intended to be Tailwind utilities.
+     If they were custom utilities not matching Tailwind's naming, they would need to stay.
+     Given the current setup, they are meant to be generated by Tailwind. */
 }
 
-@keyframes gradient-animation {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slide-in-bottom {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* @keyframes definitions (gradient-animation, fade-in, slide-in-bottom) 
+   are also handled by Tailwind based on tailwind.config.ts.
+   No need to duplicate them here. */
