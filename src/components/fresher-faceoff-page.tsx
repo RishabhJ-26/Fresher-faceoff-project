@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -218,15 +217,15 @@ export function FresherFaceoffPage() {
       stream.getVideoTracks()[0].onended = () => {
         setIsScreenShared(false);
         startCameraStream(false).then(camStream => {
-          if (!camStream) { 
-            setIsVideoOff(true); 
+          if (!camStream) {
+            setIsVideoOff(true);
             if (localVideoRef.current) localVideoRef.current.srcObject = null;
           }
         });
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
-      setIsScreenShared(true); 
-      setIsVideoOff(false); 
+      setIsScreenShared(true);
+      setIsVideoOff(false);
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -252,7 +251,7 @@ export function FresherFaceoffPage() {
 
   useEffect(() => {
     if (isConnected) {
-      if (!isScreenShared) { 
+      if (!isScreenShared) {
         startCameraStream().then(stream => {
           if (stream && remoteVideoRef.current) {
             // Simulate peer connection by cloning local stream to remote video element for demo purposes
@@ -263,21 +262,21 @@ export function FresherFaceoffPage() {
               peerStream.addTrack(clonedTrack);
             });
             remoteVideoRef.current.srcObject = peerStream;
-            
+
             // Fallback for peer video if it doesn't load after a delay (e.g. for actual P2P connection issues)
             setTimeout(() => {
                if(remoteVideoRef.current && (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.getTracks().length === 0)) {
                   // This mock stream is a placeholder, in a real app you'd handle P2P connection state
                   const mockStream = new MediaStream();
                   const canvas = document.createElement('canvas');
-                  canvas.width = 640; 
+                  canvas.width = 640;
                   canvas.height = 480;
                   const ctx = canvas.getContext('2d');
                   if (ctx) {
                     ctx.fillStyle = 'hsl(var(--muted))';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = 'hsl(var(--muted-foreground))';
-                    ctx.font = '30px Inter, sans-serif'; 
+                    ctx.font = '30px Inter, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText('Peer Video Offline', canvas.width / 2, canvas.height / 2);
                   }
@@ -310,7 +309,7 @@ export function FresherFaceoffPage() {
       stopStream(localStreamRef.current);
       stopStream(screenStreamRef.current);
     };
-  }, [isConnected, startCameraStream, isMuted, isScreenShared]); // Added isMuted and isScreenShared as dependencies
+  }, [isConnected, startCameraStream, isMuted, isScreenShared]);
 
   // Scroll chat to bottom on new message
   useEffect(() => {
@@ -334,10 +333,9 @@ export function FresherFaceoffPage() {
 
     setIsConnecting(true);
 
-    // Check camera permission proactively before connecting
-    if (hasCameraPermission === null) { // Only if not already checked/denied
-        const stream = await startCameraStream(false); // Don't show error toast yet
-        if (!stream) { // If camera access fails or is denied
+    if (hasCameraPermission === null) {
+        const stream = await startCameraStream(false);
+        if (!stream) {
             toast({
                 variant: "destructive",
                 title: "Camera Access Recommended",
@@ -345,7 +343,7 @@ export function FresherFaceoffPage() {
                 duration: 7000,
             });
         }
-    } else if (hasCameraPermission === false) { // If already known to be denied
+    } else if (hasCameraPermission === false) {
         toast({
             variant: "destructive",
             title: "Camera Access Denied",
@@ -355,7 +353,6 @@ export function FresherFaceoffPage() {
     }
 
 
-    // Simulate connection delay
     setTimeout(() => {
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
 
@@ -380,7 +377,7 @@ export function FresherFaceoffPage() {
       if (interviewId.startsWith("FF-NEW-")) {
           currentId = effectiveId;
           FAKE_ACTIVE_INTERVIEWS.add(currentId);
-          setInterviewId(currentId); // Update interviewId to the actual ID
+          setInterviewId(currentId);
           toast({
             title: "Interview Created & Joined!",
             description: (
@@ -395,7 +392,7 @@ export function FresherFaceoffPage() {
           description: `Joined interview: ${currentId}`,
         });
       }
-      setIsTimerRunning(true); // Start the interview timer
+      setIsTimerRunning(true);
     }, 1500);
   };
 
@@ -423,19 +420,17 @@ export function FresherFaceoffPage() {
     setMessages([]);
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
     FAKE_ACTIVE_INTERVIEWS.delete(effectiveId);
-    setInterviewId(""); // Clear interview ID on disconnect
+    setInterviewId("");
     toast({ title: "Disconnected", description: "You have left the interview session." });
 
     if (isFullscreen && document.fullscreenElement) {
         document.exitFullscreen?.().catch(err => console.error("Error exiting fullscreen on disconnect:", err));
     }
-    setIsFullscreen(false); // Ensure fullscreen state is reset
-    // Stop and reset interview timer
+    setIsFullscreen(false);
     setIsTimerRunning(false);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     setTimerSeconds(0);
 
-    // Stop and reset question timer
     setIsQuestionTimerRunning(false);
     if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current);
     setQuestionTimerSeconds(0);
@@ -453,11 +448,10 @@ export function FresherFaceoffPage() {
         text: messageText,
         sender: sender,
         timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined, // Initialize feedback for AI messages
+        feedback: sender === "ai" ? null : undefined,
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
 
-      // Simulate peer response if message is from "me"
       if (sender === "me") {
         setTimeout(() => {
           const peerResponse: Message = {
@@ -468,7 +462,7 @@ export function FresherFaceoffPage() {
           };
           setMessages(prev => [...prev, peerResponse]);
         }, 800);
-        setNewMessage(""); // Clear input field
+        setNewMessage("");
       }
     }
   };
@@ -476,7 +470,6 @@ export function FresherFaceoffPage() {
   const toggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
-    // Apply mute state to local audio tracks (camera and screen share if active)
     if (localStreamRef.current) {
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     }
@@ -487,64 +480,59 @@ export function FresherFaceoffPage() {
   };
 
   const toggleVideo = async () => {
-    // If screen sharing, this button should first stop screen share then toggle video
-    if (isScreenShared) { 
-      await toggleShareScreen(); // This will stop screen share and attempt to restart camera
+    if (isScreenShared) {
+      await toggleShareScreen();
       return;
     }
 
     const newVideoOffState = !isVideoOff;
-    setIsVideoOff(newVideoOffState); // Optimistically update UI
+    setIsVideoOff(newVideoOffState);
 
-    if (localStreamRef.current) { // If camera stream exists
+    if (localStreamRef.current) {
         localStreamRef.current.getVideoTracks().forEach(track => {
-          track.enabled = !newVideoOffState; // Toggle track enabled state
+          track.enabled = !newVideoOffState;
         });
-        if (localVideoRef.current) { // Ensure video element reflects this
+        if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStreamRef.current;
         }
-    } else if (!newVideoOffState) { // If no stream, and trying to turn video ON
+    } else if (!newVideoOffState) {
         const stream = await startCameraStream();
-        if(!stream) setIsVideoOff(true); // If starting camera failed, revert UI state
+        if(!stream) setIsVideoOff(true);
     }
-    
+
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
   };
 
 
-// Toggle Screen Sharing
 const toggleShareScreen = async () => {
-    if (!isScreenShared) { // If not currently sharing, start sharing
-        // Temporarily disable camera video tracks if active
+    if (!isScreenShared) {
         if (localStreamRef.current) {
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
         const stream = await startScreenShareStream();
-        if (stream) { // Successfully started screen share
+        if (stream) {
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else { // Failed to start screen share, re-enable camera if it was on
-           if (localStreamRef.current) { // If camera stream exists
-              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Re-enable based on isVideoOff state
+        } else {
+           if (localStreamRef.current) {
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
               if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-           } else if (!isVideoOff) { // If no camera stream, but video wasn't off, try to start it
-             await startCameraStream(false); // Start camera without error toast if it fails now
+           } else if (!isVideoOff) {
+             await startCameraStream(false);
            }
-           // setIsScreenShared(false) is handled by startScreenShareStream on failure
         }
-    } else { // If currently sharing, stop sharing
+    } else {
         if (screenStreamRef.current) {
-            screenStreamRef.current.getTracks().forEach(track => track.stop()); // Stop all tracks of screen stream
-            screenStreamRef.current = null; // Clear reference
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
         }
-        setIsScreenShared(false); // Update state
+        setIsScreenShared(false);
 
-        // Re-enable camera video if it was not explicitly turned off
-        if (localStreamRef.current) { // If camera stream exists
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Re-enable based on isVideoOff state
+        if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
             if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-        } else if (!isVideoOff) { // If no camera stream, but video wasn't off, try to start it
+        } else if (!isVideoOff) {
             await startCameraStream(false);
-        } else if (isVideoOff && localVideoRef.current) { // If video was off, ensure local video element is blank
+        } else if (isVideoOff && localVideoRef.current) {
             localVideoRef.current.srcObject = null;
         }
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
@@ -563,7 +551,7 @@ const toggleShareScreen = async () => {
   };
 
   const toggleFullscreen = () => {
-    const element = document.documentElement; 
+    const element = document.documentElement;
 
     if (!document.fullscreenElement) {
       element.requestFullscreen().catch(err => {
@@ -580,7 +568,6 @@ const toggleShareScreen = async () => {
     }
   };
 
-  // Listen to fullscreen changes to update state
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -589,7 +576,6 @@ const toggleShareScreen = async () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // AI Question Generation
   const handleGenerateQuestions = async () => {
     if (!interviewCategory) {
       toast({ variant: "destructive", title: "Category Required", description: "Please select an interview category or choose 'Custom Topic'." });
@@ -601,7 +587,7 @@ const toggleShareScreen = async () => {
     }
 
     setIsGeneratingQuestions(true);
-    setGeneratedQuestions([]); // Clear previous questions
+    setGeneratedQuestions([]);
     try {
       const topic = interviewCategory === "Custom Topic" ? customTopic : interviewCategory;
       const result: GenerateInterviewQuestionsOutput = await generateInterviewQuestions({ topic, numQuestions: 5 });
@@ -616,13 +602,12 @@ const toggleShareScreen = async () => {
     } catch (error: any) {
       console.error("Error generating questions:", error);
       toast({ variant: "destructive", title: "Error Generating Questions", description: error.message || "An unexpected error occurred." });
-      setGeneratedQuestions(["Failed to load questions. Please try again."]); // Show error in list
+      setGeneratedQuestions(["Failed to load questions. Please try again."]);
     } finally {
       setIsGeneratingQuestions(false);
     }
   };
 
-  // Interview Timer Logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -652,7 +637,6 @@ const toggleShareScreen = async () => {
     setTimerSeconds(0);
   };
 
-  // Question Timer Logic
   useEffect(() => {
     if (isQuestionTimerRunning) {
       questionTimerIntervalRef.current = setInterval(() => {
@@ -680,13 +664,11 @@ const toggleShareScreen = async () => {
   const handleStopQuestionTimer = () => {
     setIsQuestionTimerRunning(false);
     if (currentQuestionIndex !== null) {
-        // Send AI message about question completion and time
         handleSendMessage(`Finished question ${currentQuestionIndex + 1}. Time taken: ${formatTime(questionTimerSeconds)}`, "ai");
     }
-    setCurrentQuestionIndex(null); // Reset current question
+    setCurrentQuestionIndex(null);
   };
 
-  // Feedback for AI Messages
   const handleMessageFeedback = (messageId: string, feedback: "good" | "bad") => {
     setMessages(prevMessages =>
       prevMessages.map(msg =>
@@ -696,40 +678,37 @@ const toggleShareScreen = async () => {
     toast({ title: "Feedback Submitted", description: `Marked AI response as ${feedback}.` });
   };
 
-  // AI Feedback on Session
   const handleGetAiFeedback = () => {
     if (messages.filter(m => m.sender === "me" || m.sender === "peer").length < 2) {
       toast({ variant: "destructive", title: "Not Enough Interaction", description: "Please have a more substantial conversation before requesting AI feedback." });
       return;
     }
     setShowAiFeedbackProcessing(true);
-    // Simulate AI processing
     setTimeout(() => {
       const feedbackText = `Overall, the interview interaction showed good potential. Key strengths include clear communication and relevant questions. Areas for improvement could be to elaborate more on answers and to ask more follow-up questions to dive deeper into topics. The pacing was generally good. Remember to maintain eye contact and show enthusiasm!`;
       setOverallFeedback(feedbackText);
-      handleSendMessage(feedbackText, "ai"); // Send feedback as an AI message
-      setActiveTab("feedback"); // Switch to feedback tab
+      handleSendMessage(feedbackText, "ai");
+      setActiveTab("feedback");
       setShowAiFeedbackProcessing(false);
       toast({ title: "AI Feedback Generated!", description: "Check the 'Feedback' tab for insights." });
     }, 2500);
   };
 
-  // Share Interview (Web Share API or Copy)
   const handleShareInterview = () => {
     const idToShare = interviewId.replace("FF-NEW-", "FF-");
     if (navigator.share) {
       navigator.share({
         title: 'Join My Fresher Faceoff Interview!',
         text: `Let's practice! Join my Fresher Faceoff interview with ID: ${idToShare}`,
-        url: window.location.href, // Share current page URL
+        url: window.location.href,
       })
       .then(() => toast({ title: "Shared!", description: "Interview details sent."}))
       .catch((error) => {
         console.error('Error sharing:', error);
-        handleCopyInterviewId(); // Fallback to copy if share fails
+        handleCopyInterviewId();
         toast({title: "Share Failed, ID Copied", description: "Could not use share. Interview ID copied to clipboard instead."});
       });
-    } else { // Fallback if Web Share API is not supported
+    } else {
       handleCopyInterviewId();
       toast({title: "Copied for Sharing", description: "Interview ID copied. Please paste it to your peer."});
     }
@@ -740,8 +719,14 @@ const toggleShareScreen = async () => {
     toast({ title: "Question Rated", description: `You rated this question as ${difficulty}.` });
   };
 
+  const handleSettingsAction = (action: string) => {
+    toast({
+      title: "Settings Action",
+      description: `${action} feature is not yet implemented.`,
+    });
+  };
 
-  // Lobby View (when not connected)
+
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan selection:bg-primary/30 selection:text-primary-foreground">
@@ -762,7 +747,6 @@ const toggleShareScreen = async () => {
           </CardHeader>
 
           <CardContent className="space-y-6 p-0">
-            {/* AI Question Generation Section */}
             <div className="space-y-3 p-4 border border-border/30 rounded-xl bg-background/60 shadow-sm animate-fade-in-up delay-100 hover:shadow-md transition-shadow duration-300">
               <h3 className="text-base font-semibold text-foreground flex items-center"><Brain className="w-5 h-5 mr-2.5 text-primary"/>AI Interview Questions</h3>
               <Select value={interviewCategory} onValueChange={setInterviewCategory}>
@@ -801,7 +785,6 @@ const toggleShareScreen = async () => {
               )}
             </div>
 
-            {/* Interview ID Input */}
             <div className="relative animate-fade-in-up delay-200">
               <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70 pointer-events-none" />
               <Input
@@ -812,14 +795,13 @@ const toggleShareScreen = async () => {
                 className="text-base h-14 bg-input border-input hover:border-primary/70 focus:border-primary focus-visible:ring-primary focus-visible:ring-2 rounded-lg shadow-inner-soft pl-12 pr-12 text-lg placeholder:text-muted-foreground/60 tracking-wider"
                 aria-label="Interview ID Input"
               />
-              {interviewId && !interviewId.startsWith("FF-NEW-") && ( // Show copy only if it's not a newly generated local ID
+              {interviewId && !interviewId.startsWith("FF-NEW-") && (
                  <Button variant="ghost" size="icon" onClick={handleCopyInterviewId} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" aria-label="Copy Interview ID">
                     {copied ? <Check className="h-5 w-5 text-green-400 animate-pop-in" /> : <Copy className="h-5 w-5" />}
                 </Button>
               )}
             </div>
 
-            {/* Join Button */}
             <Button
               onClick={handleConnect}
               disabled={isConnecting}
@@ -837,7 +819,6 @@ const toggleShareScreen = async () => {
               )}
             </Button>
 
-            {/* "Or" Separator */}
             <div className="relative py-2 animate-fade-in-up delay-350">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/40" />
@@ -849,7 +830,6 @@ const toggleShareScreen = async () => {
               </div>
             </div>
 
-            {/* Create New Interview Button */}
             <Button
               onClick={handleCreateInterview}
               variant="outline"
@@ -871,14 +851,12 @@ const toggleShareScreen = async () => {
     );
   }
 
-  // Interview View (when connected)
   return (
     <TooltipProvider delayDuration={150}>
     <div className={cn(
       "flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground",
-       isFullscreen && "fixed inset-0 z-[999]" 
+       isFullscreen && "fixed inset-0 z-[99999]"
       )}>
-      {/* Header (always shown, adapted for fullscreen) */}
         <header className={cn(
           "bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20",
           isFullscreen && "fixed top-0 left-0 right-0"
@@ -892,7 +870,6 @@ const toggleShareScreen = async () => {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 animate-fade-in-down delay-100">
-              {/* Interview Timer */}
               <div className="flex items-center gap-2 text-sm font-mono bg-muted/70 px-3 py-1.5 rounded-lg shadow-inner-soft text-foreground tabular-nums">
                 <Clock className="h-4.5 w-4.5 text-primary"/>
                 <span>{formatTime(timerSeconds)}</span>
@@ -913,7 +890,6 @@ const toggleShareScreen = async () => {
                   </TooltipTrigger>
                   <TooltipContent><p>Reset Timer</p></TooltipContent>
               </Tooltip>
-              {/* Interview ID and Share (hidden on smaller screens or adapted) */}
               <div className="hidden md:flex items-center gap-2">
                   <span className="text-muted-foreground text-sm mx-1">|</span>
                   <span className="text-muted-foreground text-sm">ID:</span>
@@ -956,12 +932,12 @@ const toggleShareScreen = async () => {
                       </TooltipTrigger>
                       <TooltipContent><p>Settings</p></TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" className="w-52 bg-popover border-border/70 shadow-xl backdrop-blur-md">
-                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30">Audio Settings</DropdownMenuItem>
-                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30">Video Settings</DropdownMenuItem>
+                   <DropdownMenuContent align="end" className="w-52 bg-popover border-border/70 shadow-xl backdrop-blur-md">
+                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30" onClick={() => handleSettingsAction("Audio Settings")}>Audio Settings</DropdownMenuItem>
+                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30" onClick={() => handleSettingsAction("Video Settings")}>Video Settings</DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-border/50"/>
-                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30">Report Issue</DropdownMenuItem>
-                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30">
+                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30" onClick={() => handleSettingsAction("Report Issue")}>Report Issue</DropdownMenuItem>
+                      <DropdownMenuItem className="hover:bg-accent/20 focus:bg-accent/30" onClick={() => handleSettingsAction("Help & Feedback")}>
                           <HelpCircle className="mr-2 h-4 w-4" />
                           Help & Feedback
                       </DropdownMenuItem>
@@ -973,78 +949,86 @@ const toggleShareScreen = async () => {
           </div>
         </header>
 
-      {/* Main Content Area: Videos and Chat/Tabs Panel */}
       <main className={cn(
-        "flex flex-1 gap-3.5 p-3.5 overflow-hidden", 
-        isFullscreen ? "pt-[70px] pb-[86px]" : "pt-0 pb-0", // Adjust padding for fixed header/footer in fullscreen
-        "bg-background/80" // Apply background to main area for consistent look
+        "flex flex-col md:flex-row flex-1 gap-3.5 p-3.5 overflow-hidden",
+        isFullscreen ? "pt-[70px] pb-[86px]" : "pt-0 pb-0",
+        "bg-background/80"
       )}>
-        {/* Peer Video (Left Column) */}
-        <div className="flex-1 flex flex-col gap-3.5 animate-fade-in-up delay-100 overflow-hidden">
-           <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
-              <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-                <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
-                  <Users className="w-4.5 h-4.5" /> Peer
+        {/* Video Area (Left/Top on Mobile, Left on Desktop) */}
+        <div className={cn(
+            "flex flex-col gap-3.5 animate-fade-in-up delay-100 overflow-hidden",
+            isFullscreen ? "md:w-3/5 lg:w-2/3" : "md:w-2/3 lg:w-3/4", // Wider in fullscreen
+            "w-full" // Full width on mobile
+            )}>
+            {/* Peer Video (Main View) */}
+            <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
+                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                  <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                    <Users className="w-4.5 h-4.5" /> Peer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
+                   <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
+                   {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
+                        <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
+                            <AvatarImage src={`https://picsum.photos/seed/peerLarge/256/256`} alt="Peer Avatar" data-ai-hint="friendly avatar"/>
+                            <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
+                        </Avatar>
+                        <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
+                     </div>
+                   )}
+                </CardContent>
+            </Card>
+
+            {/* User Video (Smaller, Picture-in-Picture style) */}
+            <Card className={cn(
+                "overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative",
+                isFullscreen ? "h-1/4 md:h-1/3" : "h-1/3 md:h-2/5", // Adjust height based on fullscreen
+                "min-h-[150px]" // Ensure minimum height
+                )}>
+               <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
+                <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                  <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
-                 <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
-                 {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
-                      <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
-                          <AvatarImage src={`https://picsum.photos/seed/peerLarge/256/256`} alt="Peer Avatar" data-ai-hint="friendly avatar"/>
-                          <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
-                      </Avatar>
-                      <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
+                <div className="flex items-center gap-1.5">
+                    {isMuted && <MicOff className="w-4 h-4 text-red-400" />}
+                    {isVideoOff && !isScreenShared && <VideoOff className="w-4 h-4 text-red-400" />}
+                    {!isMuted && <Mic className="w-4 h-4 text-green-400" />}
+                    {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
+                 </div>
+                </CardHeader>
+               <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]">
+                 <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
+                 {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
+                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                       <Avatar className={cn("w-16 h-16 shadow-md border border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
+                       <AvatarImage src={`https://picsum.photos/seed/myAvatarSmall/64/64`} alt="My Avatar" data-ai-hint="professional avatar"/>
+                       <AvatarFallback className="text-xl bg-primary/25 text-primary rounded-full">
+                           ME
+                       </AvatarFallback>
+                       </Avatar>
+                       {hasCameraPermission === false && !isScreenShared && <p className="mt-2 text-xs text-destructive font-semibold">No Camera Access</p>}
+                       {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
                    </div>
                  )}
-              </CardContent>
+                  {hasCameraPermission === null && !isScreenShared && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                      <p className="text-xs text-muted-foreground">Accessing Camera...</p>
+                    </div>
+                  )}
+               </CardContent>
             </Card>
         </div>
 
-        {/* User Video (Middle Column) */}
-        <div className="flex-1 flex flex-col gap-3.5 animate-fade-in-up delay-150 overflow-hidden">
-           <Card className="overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative flex-1">
-             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
-              <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
-                <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
-              </CardTitle>
-              <div className="flex items-center gap-1.5">
-                  {isMuted && <MicOff className="w-4 h-4 text-red-400" />}
-                  {isVideoOff && !isScreenShared && <VideoOff className="w-4 h-4 text-red-400" />}
-                  {!isMuted && <Mic className="w-4 h-4 text-green-400" />}
-                  {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
-               </div>
-              </CardHeader>
-             <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]">
-               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
-               {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
-                     <Avatar className={cn("w-16 h-16 shadow-md border border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
-                     <AvatarImage src={`https://picsum.photos/seed/myAvatarSmall/64/64`} alt="My Avatar" data-ai-hint="professional avatar"/>
-                     <AvatarFallback className="text-xl bg-primary/25 text-primary rounded-full">
-                         ME
-                     </AvatarFallback>
-                     </Avatar>
-                     {hasCameraPermission === false && !isScreenShared && <p className="mt-2 text-xs text-destructive font-semibold">No Camera Access</p>}
-                     {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
-                 </div>
-               )}
-                {hasCameraPermission === null && !isScreenShared && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                    <p className="text-xs text-muted-foreground">Accessing Camera...</p>
-                  </div>
-                )}
-             </CardContent>
-           </Card>
-        </div>
 
-        {/* Chat/Tabs Panel (Right Column) */}
+        {/* Chat/Tabs Panel (Right/Bottom on Mobile, Right on Desktop) */}
         <Card className={cn(
-          "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250",
-          "flex-1 max-h-full overflow-hidden" // Ensure it takes available space and handles overflow
-        )}>
+            "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250",
+            isFullscreen ? "md:w-2/5 lg:w-1/3" : "md:w-1/3 lg:w-1/4", // Narrower in fullscreen
+            "w-full flex-1 max-h-full overflow-hidden" // Full width, takes remaining space on mobile
+            )}>
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
                 <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
@@ -1101,7 +1085,7 @@ const toggleShareScreen = async () => {
                             <p className={cn("text-[11px] mt-2 opacity-90", msg.sender === "me" ? "text-primary-foreground/90" : msg.sender === "ai" ? "text-accent-foreground/90" : "text-muted-foreground", "text-right")}>
                               {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            {msg.sender === "ai" && msg.feedback !== undefined && ( // Show feedback buttons for AI messages
+                            {msg.sender === "ai" && msg.feedback !== undefined && (
                                 <div className="mt-2.5 pt-2 border-t border-accent/30 flex items-center justify-end space-x-2">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1153,7 +1137,7 @@ const toggleShareScreen = async () => {
 
               <TabsContent value="questions" className="flex-1 flex flex-col m-0 overflow-hidden">
                  <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                    {isGeneratingQuestions && ( // Show loader while generating
+                    {isGeneratingQuestions && (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4"/>
                             <p className="text-base">Generating AI questions...</p>
@@ -1174,7 +1158,7 @@ const toggleShareScreen = async () => {
                                         <p className={cn("text-sm leading-relaxed flex-1", question.startsWith("Error:") || question.startsWith("Failed") ? "text-destructive font-medium" : "text-card-foreground")}>
                                             <strong className="text-primary mr-2">{index + 1}.</strong> {question}
                                         </p>
-                                        {currentQuestionIndex !== index && !(question.startsWith("Error:") || question.startsWith("Failed")) && ( // Show start timer button if not current question
+                                        {currentQuestionIndex !== index && !(question.startsWith("Error:") || question.startsWith("Failed")) && (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 ml-2 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" onClick={() => handleStartQuestionTimer(index)}>
@@ -1185,7 +1169,7 @@ const toggleShareScreen = async () => {
                                             </Tooltip>
                                         )}
                                     </div>
-                                    {currentQuestionIndex === index && ( // Show timer and stop button if current question
+                                    {currentQuestionIndex === index && (
                                         <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
                                             <span className="text-base font-mono text-primary tabular-nums">{formatTime(questionTimerSeconds)}</span>
                                             <Button size="sm" variant="destructive" onClick={handleStopQuestionTimer} className="gap-1.5 rounded-md">
@@ -1193,7 +1177,6 @@ const toggleShareScreen = async () => {
                                             </Button>
                                         </div>
                                     )}
-                                     {/* Difficulty Rating for non-error questions */}
                                      {!(question.startsWith("Error:") || question.startsWith("Failed")) && (
                                         <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-start space-x-2">
                                             <span className="text-xs text-muted-foreground mr-2">Rate difficulty:</span>
@@ -1241,7 +1224,7 @@ const toggleShareScreen = async () => {
                             {showAiFeedbackProcessing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Sparkles className="h-5 w-5 mr-2"/>}
                             {showAiFeedbackProcessing ? "Analyzing Session..." : "Get AI Feedback on Session"}
                         </Button>
-                        {overallFeedback && ( // Display AI feedback if available
+                        {overallFeedback && (
                             <Card className="p-4 bg-card/90 border-accent/50 shadow-lg animate-scale-in">
                                 <CardHeader className="p-0 pb-2.5">
                                     <CardTitle className="text-lg text-accent flex items-center gap-2.5"><Bot className="h-5.5 w-5.5"/> AI Coach Summary</CardTitle>
@@ -1251,14 +1234,14 @@ const toggleShareScreen = async () => {
                                 </CardContent>
                             </Card>
                         )}
-                        {showAiFeedbackProcessing && ( // Show loader while processing
+                        {showAiFeedbackProcessing && (
                             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-3"/>
                                 <p className="text-base">AI is processing your session...</p>
                                 <Progress value={50} className="w-4/5 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
                             </div>
                         )}
-                         {!showAiFeedbackProcessing && !overallFeedback && ( // Initial state for feedback tab
+                         {!showAiFeedbackProcessing && !overallFeedback && (
                              <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
                                 <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
                                 Click the button above to get AI-powered feedback on your interview performance and interactions.
@@ -1309,7 +1292,6 @@ const toggleShareScreen = async () => {
         </Card>
       </main>
 
-      {/* Footer: Call Controls (always shown, adapted for fullscreen) */}
       <footer className={cn(
         "bg-card/95 backdrop-blur-lg p-3 shadow-t-strong flex justify-center items-center space-x-2.5 sm:space-x-3.5 border-t border-border/50 animate-fade-in-up delay-350",
         isFullscreen && "fixed bottom-0 left-0 right-0"
@@ -1329,8 +1311,7 @@ const toggleShareScreen = async () => {
                              control.active ? "secondary" : "outline"}
                     size={control.main ? "lg" : "default"}
                     onClick={control.action}
-                    // Disable video toggle if screen sharing is active (it's handled by screen share button now)
-                    disabled={control.id === 'video' && isScreenShared && !isVideoOff} 
+                    disabled={control.id === 'video' && isScreenShared && !isVideoOff}
                     className={cn(
                       "rounded-full p-0 aspect-square",
                       control.main ? "w-16 h-16 sm:w-[70px] sm:h-[70px] text-lg" : "w-12 h-12 sm:w-14 sm:h-14 text-base",
@@ -1340,8 +1321,7 @@ const toggleShareScreen = async () => {
                         : control.specialActive ? "bg-primary hover:bg-primary/85 text-primary-foreground focus:ring-primary/60"
                         : control.active ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring/60"
                         : "border-border/70 hover:border-primary/80 focus:ring-ring/60 hover:bg-secondary/60 text-foreground",
-                      // Specific styling for disabled video button during screen share
-                      (control.id === 'video' && isScreenShared && !isVideoOff) && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl" 
+                      (control.id === 'video' && isScreenShared && !isVideoOff) && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl"
                     )}
                     aria-label={control.label}
                   >
@@ -1356,4 +1336,3 @@ const toggleShareScreen = async () => {
     </TooltipProvider>
   );
 }
-
