@@ -8,7 +8,7 @@ const CustomCursor: FC = () => {
   const cursorDotRef = useRef<HTMLDivElement>(null);
   const cursorOutlineRef = useRef<HTMLDivElement>(null);
   const [isHoveringInteractive, setIsHoveringInteractive] = useState(false);
-  const [isVisible, setIsVisible] = useState(false); // Start as false, mouse move/enter will make it true
+  const [isVisible, setIsVisible] = useState(false); 
   const requestRef = useRef<number>();
   const lastMouseEventRef = useRef<MouseEvent | null>(null);
   const [lastPosition, setLastPosition] = useState<{ x: number, y: number } | null>(null);
@@ -22,7 +22,7 @@ const CustomCursor: FC = () => {
       if (lastMouseEventRef.current) {
         targetX = lastMouseEventRef.current.clientX;
         targetY = lastMouseEventRef.current.clientY;
-      } else if (lastPosition) { // Fallback to state if ref is null
+      } else if (lastPosition) { 
         targetX = lastPosition.x;
         targetY = lastPosition.y;
       }
@@ -31,7 +31,7 @@ const CustomCursor: FC = () => {
         const currentX = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--x') || targetX.toString());
         const currentY = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--y') || targetY.toString());
 
-        const lerpFactor = 0.35; // Smoothing factor for the outline
+        const lerpFactor = 0.35; 
         const newX = currentX + (targetX - currentX) * lerpFactor;
         const newY = currentY + (targetY - currentY) * lerpFactor;
 
@@ -45,7 +45,7 @@ const CustomCursor: FC = () => {
     requestRef.current = requestAnimationFrame(animateOutline);
 
     const onMouseMove = (event: MouseEvent) => {
-      if (!isVisible) setIsVisible(true); // Make visible on first move if not already
+      if (!isVisible) setIsVisible(true); 
       lastMouseEventRef.current = event;
       const { clientX, clientY } = event;
       setLastPosition({ x: clientX, y: clientY });
@@ -55,11 +55,9 @@ const CustomCursor: FC = () => {
         cursorDotRef.current.style.transform = `translate3d(${clientX}px, ${clientY}px, 0)`;
       }
 
-      // Initialize outline position if not set, to prevent jump from animateOutline
       if (cursorOutlineRef.current && !cursorOutlineRef.current.style.getPropertyValue('--x')) {
         cursorOutlineRef.current.style.setProperty('--x', clientX.toString());
         cursorOutlineRef.current.style.setProperty('--y', clientY.toString());
-        // Initial transform is handled by animateOutline or direct style in render
       }
 
       const target = event.target as HTMLElement;
@@ -76,35 +74,25 @@ const CustomCursor: FC = () => {
 
     const onMouseLeaveDocument = (event: MouseEvent) => {
       if (event.clientY <= 0 || event.clientX <= 0 || (event.clientX >= window.innerWidth || event.clientY >= window.innerHeight)) {
-        if (!document.fullscreenElement) { // Only hide if not in fullscreen
-             setIsVisible(false);
-        }
+        // Always hide if mouse leaves viewport boundaries, irrespective of fullscreen
+        setIsVisible(false);
       }
     };
 
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
-      if (isCurrentlyFullscreen) {
-        // Entering fullscreen:
-        setIsVisible(true); // CRITICAL: Ensure custom cursor is made visible
+      setIsVisible(true); // Ensure cursor is visible when fullscreen state changes
 
-        // Re-apply last known position immediately if available,
-        // as onMouseMove might not fire instantly or if the mouse hasn't moved yet in fullscreen.
-        if (lastPosition) {
-            if (cursorDotRef.current) {
-                cursorDotRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
-            }
-            if (cursorOutlineRef.current) {
-                cursorOutlineRef.current.style.setProperty('--x', lastPosition.x.toString());
-                cursorOutlineRef.current.style.setProperty('--y', lastPosition.y.toString());
-                cursorOutlineRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
-            }
-        }
-      } else {
-        // Exiting fullscreen:
-        // Visibility is handled by onMouseEnter/onMouseLeave/onMouseMove.
-        // If mouse is outside the window when exiting, onMouseLeaveDocument will hide it.
-        // If mouse is inside, onMouseMove will keep it visible.
+      if (isCurrentlyFullscreen && lastPosition) {
+          // Re-apply last known position if available
+          if (cursorDotRef.current) {
+              cursorDotRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
+          }
+          if (cursorOutlineRef.current) {
+              cursorOutlineRef.current.style.setProperty('--x', lastPosition.x.toString());
+              cursorOutlineRef.current.style.setProperty('--y', lastPosition.y.toString());
+              cursorOutlineRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
+          }
       }
     };
 
@@ -113,8 +101,6 @@ const CustomCursor: FC = () => {
     document.addEventListener('mouseleave', onMouseLeaveDocument);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    // Set initial position for outline to avoid jump if mouse is already in window but hasn't moved
-    // This ensures smoother first appearance.
     if (cursorOutlineRef.current && lastPosition) {
         if (!cursorOutlineRef.current.style.getPropertyValue('--x')) {
              cursorOutlineRef.current.style.setProperty('--x', lastPosition.x.toString());
@@ -133,9 +119,9 @@ const CustomCursor: FC = () => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [isVisible, lastPosition]); // isVisible and lastPosition are dependencies
+  }, [isVisible, lastPosition]); 
 
-  const outlineInitialX = lastPosition ? lastPosition.x : -100; // Default off-screen
+  const outlineInitialX = lastPosition ? lastPosition.x : -100; 
   const outlineInitialY = lastPosition ? lastPosition.y : -100;
 
   return (
@@ -146,12 +132,10 @@ const CustomCursor: FC = () => {
           'fixed top-0 left-0 rounded-full pointer-events-none z-[9999]',
           'w-8 h-8 border-2',
           isHoveringInteractive ? 'scale-150 border-accent/80 opacity-80' : 'scale-100 border-primary/60 opacity-60',
-          isVisible ? 'opacity-60' : 'opacity-0 scale-0', // Handles visibility via opacity and scale
-          'transition-transform duration-75 ease-out' // Smooth transform for interactive hover
+          isVisible ? 'opacity-60' : 'opacity-0 scale-0', 
+          'transition-transform duration-75 ease-out' 
         )}
         style={{
-            // Initial position set to prevent flicker if lastPosition is known, otherwise off-screen
-            // Animation frame will take over for smooth movement
              transform: `translate3d(${outlineInitialX}px, ${outlineInitialY}px, 0) scale(${isHoveringInteractive ? 1.5 : 1})`,
              opacity: isVisible ? (isHoveringInteractive ? 0.8 : 0.6) : 0,
         }}
@@ -162,11 +146,10 @@ const CustomCursor: FC = () => {
           'fixed top-0 left-0 rounded-full pointer-events-none z-[9999]',
           'w-2 h-2',
           isHoveringInteractive ? 'bg-accent scale-150' : 'bg-primary scale-100',
-          isVisible ? 'opacity-100' : 'opacity-0 scale-0', // Handles visibility
-          'transition-all duration-100 ease-out' // Smooth transform and bg for interactive hover
+          isVisible ? 'opacity-100' : 'opacity-0 scale-0', 
+          'transition-all duration-100 ease-out' 
         )}
         style={{
-            // Initial position off-screen, onMouseMove will place it
             transform: 'translate3d(-100%, -100%, 0) scale(1)',
             opacity: isVisible ? 1 : 0,
         }}
