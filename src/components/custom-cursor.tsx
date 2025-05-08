@@ -8,10 +8,10 @@ const CustomCursor: FC = () => {
   const cursorDotRef = useRef<HTMLDivElement>(null);
   const cursorOutlineRef = useRef<HTMLDivElement>(null);
   const [isHoveringInteractive, setIsHoveringInteractive] = useState(false);
-  const [isVisible, setIsVisible] = useState(false); 
+  const [isVisible, setIsVisible] = useState(false);
   const requestRef = useRef<number>();
   const lastMouseEventRef = useRef<MouseEvent | null>(null);
-  const [lastPosition, setLastPosition] = useState<{ x: number, y: number }>({ x: -100, y: -100 });
+  const [lastPosition, setLastPosition] = useState<{ x: number; y: number }>({ x: -100, y: -100 });
 
 
   useEffect(() => {
@@ -28,7 +28,7 @@ const CustomCursor: FC = () => {
         const currentX = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--x') || targetX.toString());
         const currentY = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--y') || targetY.toString());
 
-        const lerpFactor = 0.35; 
+        const lerpFactor = 0.25; 
         const newX = currentX + (targetX - currentX) * lerpFactor;
         const newY = currentY + (targetY - currentY) * lerpFactor;
 
@@ -39,10 +39,8 @@ const CustomCursor: FC = () => {
       requestRef.current = requestAnimationFrame(animateOutline);
     };
 
-    requestRef.current = requestAnimationFrame(animateOutline);
-
     const onMouseMove = (event: MouseEvent) => {
-      setIsVisible(true); 
+      if(!isVisible) setIsVisible(true); 
       lastMouseEventRef.current = event;
       const { clientX, clientY } = event;
       setLastPosition({ x: clientX, y: clientY });
@@ -52,7 +50,6 @@ const CustomCursor: FC = () => {
         cursorDotRef.current.style.transform = `translate3d(${clientX}px, ${clientY}px, 0)`;
       }
 
-      // Initialize outline position if not already set
       if (cursorOutlineRef.current && !cursorOutlineRef.current.style.getPropertyValue('--x')) {
         cursorOutlineRef.current.style.setProperty('--x', clientX.toString());
         cursorOutlineRef.current.style.setProperty('--y', clientY.toString());
@@ -72,34 +69,29 @@ const CustomCursor: FC = () => {
     };
 
     const onMouseLeaveDocument = (event: MouseEvent) => {
-      // Hide cursor if mouse leaves the viewport boundaries
       if (event.clientY <= 0 || event.clientX <= 0 || (event.clientX >= window.innerWidth || event.clientY >= window.innerHeight)) {
         setIsVisible(false);
       }
     };
     
     const handleFullscreenChange = () => {
-      // Always ensure cursor is visible on fullscreen change, let mousemove/mouseleave handle actual visibility
       setIsVisible(true); 
-      // Re-apply last known position if available to prevent cursor jump
-      if (lastPosition.x !== -100 && lastPosition.y !== -100) { // Check if lastPosition is valid
+      const currentX = lastMouseEventRef.current?.clientX ?? lastPosition.x;
+      const currentY = lastMouseEventRef.current?.clientY ?? lastPosition.y;
+      
+      if (currentX !== -100 || currentY !== -100) { 
           if (cursorDotRef.current) {
-              cursorDotRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
+              cursorDotRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
           }
           if (cursorOutlineRef.current) {
-              cursorOutlineRef.current.style.setProperty('--x', lastPosition.x.toString());
-              cursorOutlineRef.current.style.setProperty('--y', lastPosition.y.toString());
-              cursorOutlineRef.current.style.transform = `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0)`;
+              cursorOutlineRef.current.style.setProperty('--x', currentX.toString());
+              cursorOutlineRef.current.style.setProperty('--y', currentY.toString());
+              cursorOutlineRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
           }
       }
     };
 
-    document.addEventListener('mousemove', onMouseMove, { passive: true });
-    document.addEventListener('mouseenter', onMouseEnterDocument);
-    document.addEventListener('mouseleave', onMouseLeaveDocument);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    
-    // Initial position setting for outline if lastPosition is already known (e.g. on fast refresh)
+    // Set initial position for outline if lastPosition is valid
     if (cursorOutlineRef.current && lastPosition.x !== -100 && lastPosition.y !== -100) {
         if (!cursorOutlineRef.current.style.getPropertyValue('--x')) {
              cursorOutlineRef.current.style.setProperty('--x', lastPosition.x.toString());
@@ -108,6 +100,12 @@ const CustomCursor: FC = () => {
         }
     }
 
+    document.addEventListener('mousemove', onMouseMove, { passive: true });
+    document.addEventListener('mouseenter', onMouseEnterDocument);
+    document.addEventListener('mouseleave', onMouseLeaveDocument);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
+    requestRef.current = requestAnimationFrame(animateOutline);
 
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
@@ -118,10 +116,10 @@ const CustomCursor: FC = () => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [lastPosition]); // isVisible removed, handle visibility through mouse events directly. Added lastPosition.
+  }, [isVisible, lastPosition.x, lastPosition.y]); // Re-run effect if isVisible or lastPosition changes.
+                                                     // lastPosition dependency ensures initial outline position is set if mouse hasn't moved yet.
+                                                     // isVisible dependency ensures listeners are correctly managed if visibility logic changes.
 
-  const outlineInitialX = lastPosition.x; 
-  const outlineInitialY = lastPosition.y;
 
   return (
     <>
@@ -133,12 +131,11 @@ const CustomCursor: FC = () => {
           isHoveringInteractive ? 'scale-150 border-accent/80 opacity-80' : 'scale-100 border-primary/60 opacity-60',
           isVisible ? 'opacity-60' : 'opacity-0 scale-0', 
           'transition-transform duration-75 ease-out',
-          // Ensure opacity is also controlled by isVisible for the outline
           isVisible && isHoveringInteractive ? 'opacity-80' : isVisible ? 'opacity-60' : 'opacity-0'
         )}
         style={{
-             transform: `translate3d(${outlineInitialX}px, ${outlineInitialY}px, 0) scale(${isHoveringInteractive ? 1.5 : 1})`,
-             // Opacity is now also handled by the className logic above
+             // transform is handled by animateOutline and initial JS setup
+             opacity: isVisible ? (isHoveringInteractive ? 0.8 : 0.6) : 0,
         }}
       />
       <div
@@ -151,7 +148,7 @@ const CustomCursor: FC = () => {
           'transition-all duration-100 ease-out' 
         )}
         style={{
-            transform: `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0) scale(${isHoveringInteractive ? 1.5 : 1})`, // Use lastPosition for initial dot as well
+            transform: `translate3d(${lastPosition.x}px, ${lastPosition.y}px, 0) scale(${isHoveringInteractive ? 1.5 : 1})`,
             opacity: isVisible ? 1 : 0,
         }}
       />
