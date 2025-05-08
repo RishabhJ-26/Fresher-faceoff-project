@@ -178,7 +178,7 @@ export function FresherFaceoffPage() {
         localVideoRef.current.srcObject = stream;
       }
       setHasCameraPermission(true);
-      setIsVideoOff(false);
+      setIsVideoOff(false); // Ensure video is on when stream starts
       return stream;
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -217,14 +217,16 @@ export function FresherFaceoffPage() {
       
       stream.getVideoTracks()[0].onended = () => {
         setIsScreenShared(false);
-        if (localStreamRef.current && localVideoRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current;
-        } else {
-           startCameraStream(false); 
-        }
+        // Attempt to restart camera when screen share ends
+        startCameraStream(false).then(camStream => {
+          if (!camStream) {
+            setIsVideoOff(true); // if camera couldn't restart, set video off
+          }
+        });
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
       setIsScreenShared(true);
+      setIsVideoOff(false); // Screen is now the video source, so video is "on"
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -252,30 +254,26 @@ export function FresherFaceoffPage() {
     if (isConnected) {
       startCameraStream().then(stream => {
         if (stream && remoteVideoRef.current) {
-          // Simulate peer connection - in a real app, this would come from WebRTC
           const peerStream = new MediaStream();
-          // Clone tracks to avoid issues if the original stream is manipulated
           stream.getTracks().forEach(track => {
             const clonedTrack = track.clone();
-            if (clonedTrack.kind === 'audio') clonedTrack.enabled = !isMuted; // Ensure audio track reflects mute state
+            if (clonedTrack.kind === 'audio') clonedTrack.enabled = !isMuted;
             peerStream.addTrack(clonedTrack);
           });
           remoteVideoRef.current.srcObject = peerStream;
           
-          // Fallback for if peer video doesn't load after a delay
           setTimeout(() => {
              if(remoteVideoRef.current && (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.getTracks().length === 0)) {
-                // Create a mock stream with a "Peer Video Offline" message
                 const mockStream = new MediaStream();
                 const canvas = document.createElement('canvas');
-                canvas.width = 640;
-                canvas.height = 480;
+                canvas.width = 320; // Smaller placeholder
+                canvas.height = 240;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                  ctx.fillStyle = 'hsl(var(--muted))'; // Use theme color
+                  ctx.fillStyle = 'hsl(var(--muted))'; 
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
-                  ctx.fillStyle = 'hsl(var(--muted-foreground))'; // Use theme color
-                  ctx.font = '30px Inter, sans-serif';
+                  ctx.fillStyle = 'hsl(var(--muted-foreground))'; 
+                  ctx.font = '20px Inter, sans-serif';
                   ctx.textAlign = 'center';
                   ctx.fillText('Peer Video Offline', canvas.width / 2, canvas.height / 2);
                 }
@@ -283,40 +281,40 @@ export function FresherFaceoffPage() {
                 if(videoTrack) mockStream.addTrack(videoTrack);
                 remoteVideoRef.current.srcObject = mockStream;
              }
-          }, 2000); // Wait 2 seconds
+          }, 2000);
+        } else if (!stream) {
+             // If camera stream failed on connect, show camera off state immediately
+             setIsVideoOff(true);
         }
       });
     } else {
-      // Cleanup streams and video elements on disconnect
       stopStream(localStreamRef.current);
       localStreamRef.current = null;
       stopStream(screenStreamRef.current);
       screenStreamRef.current = null;
       if (localVideoRef.current) localVideoRef.current.srcObject = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      setIsScreenShared(false); // Reset screen share state
-      setHasCameraPermission(null); // Reset camera permission state
+      setIsScreenShared(false); 
+      setHasCameraPermission(null);
+      setIsVideoOff(false); // Reset video off state for next connection
     }
 
-    // Cleanup function for when the component unmounts or isConnected changes
     return () => {
       stopStream(localStreamRef.current);
       stopStream(screenStreamRef.current);
     };
-  }, [isConnected, startCameraStream, isMuted]); // Dependencies for the effect
+  }, [isConnected, startCameraStream, isMuted]);
 
   useEffect(() => {
-    // Auto-scroll chat area to the bottom when new messages arrive
     if (chatScrollAreaRef.current) {
-      // The actual scrollable viewport is usually a child of the ScrollArea component
       const viewport = chatScrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (viewport) {
         viewport.scrollTo(0, viewport.scrollHeight);
       }
     }
-  }, [messages]); // Dependency: messages array
+  }, [messages]);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (!interviewId.trim()) {
       toast({
         variant: "destructive",
@@ -325,14 +323,33 @@ export function FresherFaceoffPage() {
       });
       return;
     }
-
+  
     setIsConnecting(true);
-    // Simulate network delay for connection
+  
+    // Check for camera permission first
+    if (hasCameraPermission === null) { // Only if not yet checked
+        const stream = await startCameraStream(false); // Check without initial error toast
+        if (!stream) {
+            // hasCameraPermission will be set to false by startCameraStream
+            toast({
+                variant: "destructive",
+                title: "Camera Access Recommended",
+                description: "Camera access is denied or unavailable. You can still join, but video features will be limited.",
+                duration: 7000,
+            });
+        }
+    } else if (hasCameraPermission === false) {
+        toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Video features will be limited. Please enable camera access in browser settings for full functionality.",
+            duration: 7000,
+        });
+    }
+
     setTimeout(() => {
-      // Normalize ID if it's a newly created one
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
       
-      // Check if the interview ID exists (mock check)
       if (!FAKE_ACTIVE_INTERVIEWS.has(effectiveId) && !interviewId.startsWith("FF-NEW-")) {
          toast({
            variant: "destructive",
@@ -351,11 +368,10 @@ export function FresherFaceoffPage() {
       setIsConnected(true);
       setIsConnecting(false);
       let currentId = interviewId;
-      // If it was a new ID, finalize it and add to active interviews
       if (interviewId.startsWith("FF-NEW-")) {
           currentId = effectiveId;
-          FAKE_ACTIVE_INTERVIEWS.add(currentId); // Add to our mock "database"
-          setInterviewId(currentId); // Update state with the finalized ID
+          FAKE_ACTIVE_INTERVIEWS.add(currentId); 
+          setInterviewId(currentId); 
           toast({
             title: "Interview Created & Joined!",
             description: (
@@ -370,13 +386,12 @@ export function FresherFaceoffPage() {
           description: `Joined interview: ${currentId}`,
         });
       }
-    }, 1500); // 1.5-second delay
+    }, 1500); 
   };
   
   const handleCreateInterview = () => {
-    // Generate a random part for the new ID
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newId = `FF-NEW-${randomPart}`; // Prefix for new IDs
+    const newId = `FF-NEW-${randomPart}`; 
     setInterviewId(newId);
     toast({
       title: "New Interview ID Generated!",
@@ -386,29 +401,25 @@ export function FresherFaceoffPage() {
           <p className="text-xs mt-1">Click 'Join Interview' to start. Share this ID with your peer.</p>
         </div>
       ),
-      duration: 8000, // Longer duration for toast
+      duration: 8000, 
     });
-    // Copy the user-friendly ID (without "FF-NEW-") to clipboard
     navigator.clipboard.writeText(newId.replace("FF-NEW-","FF-"));
-    setCopied(true); // Indicate ID was copied
-    setTimeout(() => setCopied(false), 3000); // Reset copied state after 3 seconds
+    setCopied(true); 
+    setTimeout(() => setCopied(false), 3000); 
   };
   
   const handleDisconnect = () => {
     setIsConnected(false);
-    setMessages([]); // Clear messages
-    // Remove from mock active interviews
+    setMessages([]); 
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
     FAKE_ACTIVE_INTERVIEWS.delete(effectiveId); 
-    setInterviewId(""); // Clear interview ID input
+    setInterviewId(""); 
     toast({ title: "Disconnected", description: "You have left the interview session." });
     
-    // Exit fullscreen if active
     if (isFullscreen) {
         document.exitFullscreen?.();
         setIsFullscreen(false);
     }
-    // Reset timers and related states
     setIsTimerRunning(false);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     setTimerSeconds(0);
@@ -419,7 +430,7 @@ export function FresherFaceoffPage() {
     setCurrentQuestionIndex(null);
     setOverallFeedback("");
     setShowAiFeedbackProcessing(false);
-    setActiveTab("chat"); // Reset to chat tab
+    setActiveTab("chat"); 
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
@@ -430,11 +441,10 @@ export function FresherFaceoffPage() {
         text: messageText, 
         sender: sender, 
         timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined, // AI messages can have feedback
+        feedback: sender === "ai" ? null : undefined, 
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
       
-      // If I sent the message, simulate a peer response
       if (sender === "me") {
         setTimeout(() => {
           const peerResponse: Message = {
@@ -444,8 +454,8 @@ export function FresherFaceoffPage() {
             timestamp: new Date() 
           };
           setMessages(prev => [...prev, peerResponse]);
-        }, 800); // 0.8-second delay for peer response
-        setNewMessage(""); // Clear my message input
+        }, 800); 
+        setNewMessage(""); 
       }
     }
   };
@@ -453,7 +463,6 @@ export function FresherFaceoffPage() {
   const toggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
-    // Apply mute state to the correct stream (camera or screen share)
     const currentActiveStream = isScreenShared && screenStreamRef.current ? screenStreamRef.current : localStreamRef.current;
     if (currentActiveStream) {
         currentActiveStream.getAudioTracks().forEach(track => track.enabled = !newMutedState);
@@ -463,50 +472,59 @@ export function FresherFaceoffPage() {
 
   const toggleVideo = async () => {
     if (isScreenShared) {
-        // Video control is disabled during screen sharing
         toast({ title: "Video Control Disabled", description: "Stop screen sharing to control your camera."});
         return;
     }
     const newVideoOffState = !isVideoOff;
     
-    if (localStreamRef.current) { // If camera stream exists
+    if (localStreamRef.current) { 
         localStreamRef.current.getVideoTracks().forEach(track => {
-          track.enabled = !newVideoOffState; // Enable/disable video track
+          track.enabled = !newVideoOffState; 
         });
         setIsVideoOff(newVideoOffState);
-    } else if (!newVideoOffState) { // If camera stream doesn't exist and user wants to turn video ON
-        const stream = await startCameraStream(); // Attempt to start camera
-        if(stream) setIsVideoOff(false); // Success
-        else setIsVideoOff(true); // Failed, so keep it off
-    } else { // User wants to turn video OFF (and it might already be off or no stream)
+    } else if (!newVideoOffState) { 
+        const stream = await startCameraStream(); 
+        if(stream) setIsVideoOff(false); 
+        else setIsVideoOff(true); 
+    } else { 
         setIsVideoOff(true);
     }
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
   };
 
   const toggleShareScreen = async () => {
-    if (!isScreenShared) { // If not currently sharing, start sharing
-        // Stop camera before starting screen share to avoid conflicts
+    if (!isScreenShared) { 
         if(localStreamRef.current){ 
-            localStreamRef.current.getTracks().forEach(track => track.stop()); 
-            localStreamRef.current = null; 
+            // Don't stop the stream, just disable tracks so it can be re-enabled later
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
-        if (localVideoRef.current) localVideoRef.current.srcObject = null; // Clear video element
+        if (localVideoRef.current) localVideoRef.current.srcObject = null; 
         
-        const stream = await startScreenShareStream(); // Attempt to start screen share
+        const stream = await startScreenShareStream(); 
         if (stream) { 
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else { // If screen share failed or was cancelled, try to restart camera
-           await startCameraStream(false); // Attempt to restart camera without error toast
+        } else { 
+           // If screen share failed, re-enable camera tracks if stream exists
+           if(localStreamRef.current && localVideoRef.current){
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Respect current isVideoOff
+              localVideoRef.current.srcObject = localStreamRef.current;
+           } else {
+             await startCameraStream(false); 
+           }
         }
-    } else { // If currently sharing, stop sharing
+    } else { 
         if(screenStreamRef.current){
             screenStreamRef.current.getTracks().forEach(track => track.stop());
             screenStreamRef.current = null;
         }
         setIsScreenShared(false);
-        // Restart camera after stopping screen share
-        await startCameraStream(false); // Attempt to restart camera without error toast
+        // Re-enable camera tracks or restart camera after stopping screen share
+        if(localStreamRef.current && localVideoRef.current){
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Respect current isVideoOff state
+            localVideoRef.current.srcObject = localStreamRef.current;
+        } else {
+            await startCameraStream(false); 
+        }
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
     }
   };
@@ -539,7 +557,6 @@ export function FresherFaceoffPage() {
     }
   };
 
-  // Effect to listen for fullscreen changes (e.g., user pressing Esc)
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -559,10 +576,9 @@ export function FresherFaceoffPage() {
     }
 
     setIsGeneratingQuestions(true);
-    setGeneratedQuestions([]); // Clear previous questions
+    setGeneratedQuestions([]); 
     try {
       const topic = interviewCategory === "Custom Topic" ? customTopic : interviewCategory;
-      // Call the AI flow
       const result: GenerateInterviewQuestionsOutput = await generateInterviewQuestions({ topic, numQuestions: 5 });
       setGeneratedQuestions(result.questions);
       if (result.questions.length > 0 && !result.questions[0].startsWith("Error:")) {
@@ -575,13 +591,12 @@ export function FresherFaceoffPage() {
     } catch (error: any) {
       console.error("Error generating questions:", error);
       toast({ variant: "destructive", title: "Error Generating Questions", description: error.message || "An unexpected error occurred." });
-      setGeneratedQuestions(["Failed to load questions. Please try again."]); // Fallback message
+      setGeneratedQuestions(["Failed to load questions. Please try again."]); 
     } finally {
       setIsGeneratingQuestions(false);
     }
   };
 
-  // Main Interview Timer Logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -592,7 +607,7 @@ export function FresherFaceoffPage() {
         clearInterval(timerIntervalRef.current);
       }
     }
-    return () => { // Cleanup on unmount or when isTimerRunning changes
+    return () => { 
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
@@ -611,7 +626,6 @@ export function FresherFaceoffPage() {
     setTimerSeconds(0);
   };
   
-  // Per-question Timer Logic
   useEffect(() => {
     if (isQuestionTimerRunning) {
       questionTimerIntervalRef.current = setInterval(() => {
@@ -622,7 +636,7 @@ export function FresherFaceoffPage() {
         clearInterval(questionTimerIntervalRef.current);
       }
     }
-    return () => { // Cleanup
+    return () => { 
       if (questionTimerIntervalRef.current) {
         clearInterval(questionTimerIntervalRef.current);
       }
@@ -631,7 +645,7 @@ export function FresherFaceoffPage() {
 
   const handleStartQuestionTimer = (index: number) => {
     setCurrentQuestionIndex(index);
-    setQuestionTimerSeconds(0); // Reset timer for the new question
+    setQuestionTimerSeconds(0); 
     setIsQuestionTimerRunning(true);
     toast({ title: "Question Timer Started", description: `Timing for question ${index + 1}.`});
   };
@@ -639,10 +653,9 @@ export function FresherFaceoffPage() {
   const handleStopQuestionTimer = () => {
     setIsQuestionTimerRunning(false);
     if (currentQuestionIndex !== null) {
-        // Send an AI message to chat about the question completion and time taken
         handleSendMessage(`Finished question ${currentQuestionIndex + 1}. Time taken: ${formatTime(questionTimerSeconds)}`, "ai");
     }
-    setCurrentQuestionIndex(null); // No question is actively being timed
+    setCurrentQuestionIndex(null); 
   };
 
   const handleMessageFeedback = (messageId: string, feedback: "good" | "bad") => {
@@ -655,22 +668,19 @@ export function FresherFaceoffPage() {
   };
   
   const handleGetAiFeedback = () => {
-    // Require a minimum number of messages before generating feedback
     if (messages.filter(m => m.sender === "me" || m.sender === "peer").length < 2) {
       toast({ variant: "destructive", title: "Not Enough Interaction", description: "Please have a more substantial conversation before requesting AI feedback." });
       return;
     }
     setShowAiFeedbackProcessing(true);
-    // Simulate AI processing delay
     setTimeout(() => {
-      // Mock AI feedback
       const feedbackText = `Overall, the interview interaction showed good potential. Key strengths include clear communication and relevant questions. Areas for improvement could be to elaborate more on answers and to ask more follow-up questions to dive deeper into topics. The pacing was generally good. Remember to maintain eye contact and show enthusiasm!`;
       setOverallFeedback(feedbackText);
-      handleSendMessage(feedbackText, "ai"); // Send feedback as an AI message
-      setActiveTab("feedback"); // Switch to feedback tab
+      handleSendMessage(feedbackText, "ai"); 
+      setActiveTab("feedback"); 
       setShowAiFeedbackProcessing(false);
       toast({ title: "AI Feedback Generated!", description: "Check the 'Feedback' tab for insights." });
-    }, 2500); // 2.5-second delay
+    }, 2500); 
   };
 
   const handleShareInterview = () => {
@@ -679,17 +689,15 @@ export function FresherFaceoffPage() {
       navigator.share({
         title: 'Join My Fresher Faceoff Interview!',
         text: `Let's practice! Join my Fresher Faceoff interview with ID: ${idToShare}`,
-        url: window.location.href, // Or a specific landing page for joining
+        url: window.location.href, 
       })
       .then(() => toast({ title: "Shared!", description: "Interview details sent."}))
       .catch((error) => {
         console.error('Error sharing:', error);
-        // Fallback to copy if share API fails or is not supported well for this case
         handleCopyInterviewId();
         toast({title: "Share Failed, ID Copied", description: "Could not use share. Interview ID copied to clipboard instead."});
       });
     } else {
-      // Fallback for browsers that don't support navigator.share
       handleCopyInterviewId();
       toast({title: "Copied for Sharing", description: "Interview ID copied. Please paste it to your peer."});
     }
@@ -698,7 +706,6 @@ export function FresherFaceoffPage() {
   const handleRateQuestion = (difficulty: "easy" | "medium" | "hard") => {
     setQuestionDifficulty(difficulty);
     toast({ title: "Question Rated", description: `You rated this question as ${difficulty}.` });
-    // Here you could send this data to a backend or store it for analytics
   };
 
 
@@ -710,7 +717,7 @@ export function FresherFaceoffPage() {
           <CardHeader className="text-center p-0 mb-8">
              <div className={cn(
                 "group mx-auto mb-6 p-3.5 bg-gradient-to-tr from-primary via-accent to-primary/70 rounded-full w-fit shadow-xl shadow-primary/30 transform transition-all hover:scale-105 duration-300",
-                "animate-shine" // Added shine animation class here
+                "animate-shine" 
               )}>
               <Users className="h-16 w-16 sm:h-20 sm:w-20 text-primary-foreground" />
             </div>
@@ -922,63 +929,69 @@ export function FresherFaceoffPage() {
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Adjusted layout for smaller videos and prominent chat */}
       <main className="flex-1 flex flex-col lg:flex-row gap-3.5 p-3.5 overflow-hidden bg-background/80">
-        {/* Video Grid */}
-        <div className="flex-1 grid grid-cols-1 md:grid-rows-2 md:grid-cols-1 lg:grid-cols-2 lg:grid-rows-1 gap-3.5 animate-fade-in-up delay-150">
+        {/* Left Panel: Video Grid */}
+        <div className="flex flex-col gap-3.5 lg:w-1/3 xl:w-1/4 animate-fade-in-up delay-150">
           {/* Local Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative">
-            <CardHeader className="p-3 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40 flex flex-row justify-between items-center">
-              <CardTitle className="text-base font-semibold text-primary flex items-center gap-2">
-                <UserCircle className="w-5 h-5"/> {isScreenShared ? "Your Screen" : "You"}
+          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative flex-1">
+            <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40 flex flex-row justify-between items-center">
+              <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
               </CardTitle>
-              <div className="flex items-center gap-2">
-                  {isMuted && <MicOff className="w-4.5 h-4.5 text-red-400" />}
-                  {isVideoOff && !isScreenShared && <VideoOff className="w-4.5 h-4.5 text-red-400" />}
-                  {!isMuted && <Mic className="w-4.5 h-4.5 text-green-400" />}
-                  {!isVideoOff && !isScreenShared && <Video className="w-4.5 h-4.5 text-green-400" />}
+              <div className="flex items-center gap-1.5">
+                  {isMuted && <MicOff className="w-4 h-4 text-red-400" />}
+                  {isVideoOff && !isScreenShared && <VideoOff className="w-4 h-4 text-red-400" />}
+                  {!isMuted && <Mic className="w-4 h-4 text-green-400" />}
+                  {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
                </div>
             </CardHeader>
-            <CardContent className="p-0 flex-1 aspect-video bg-muted/40 flex items-center justify-center relative mt-[53px]"> {/* mt for header height */}
+            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]"> {/* Adjusted mt for smaller header */}
               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
               {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-4 text-center">
-                    <Avatar className={cn("w-24 h-24 md:w-32 md:h-32 shadow-lg border-4 border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
+                    <Avatar className={cn("w-16 h-16 md:w-20 md:h-20 shadow-lg border-2 border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
                     <AvatarImage src={`https://picsum.photos/seed/myAvatar001/128/128`} alt="My Avatar" data-ai-hint="professional avatar" />
-                    <AvatarFallback className="text-3xl md:text-4xl bg-primary/25 text-primary rounded-full">
+                    <AvatarFallback className="text-xl md:text-2xl bg-primary/25 text-primary rounded-full">
                         ME
                     </AvatarFallback>
                     </Avatar>
-                    {hasCameraPermission === false && !isScreenShared && <p className="mt-4 text-base text-destructive font-semibold">Camera Not Available</p>}
-                    {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-4 text-base text-muted-foreground">Camera is Off</p>}
+                    {hasCameraPermission === false && !isScreenShared && <p className="mt-2 text-xs text-destructive font-semibold">Camera Not Available</p>}
+                    {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
                 </div>
               )}
+               {hasCameraPermission === null && !isScreenShared && ( // Placeholder while checking permission
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
+                   <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                   <p className="text-xs text-muted-foreground">Checking camera...</p>
+                 </div>
+               )}
             </CardContent>
           </Card>
           {/* Remote Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative">
-             <CardHeader className="p-3 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-              <CardTitle className="text-base text-center font-semibold text-accent flex items-center justify-center gap-2">
-                <Users className="w-5 h-5" /> Peer
+          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
+             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+              <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                <Users className="w-4.5 h-4.5" /> Peer
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 aspect-video bg-muted/40 flex items-center justify-center mt-[53px]">
+            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
                <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
                {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-4 text-center">
-                    <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-4 border-accent/30">
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
+                    <Avatar className="w-16 h-16 md:w-20 md:h-20 shadow-lg border-2 border-accent/30">
                         <AvatarImage src={`https://picsum.photos/seed/peerAvatar002/128/128`} alt="Peer Avatar" data-ai-hint="friendly avatar" />
-                        <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
+                        <AvatarFallback className="text-xl md:text-2xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
                     </Avatar>
-                    <p className="mt-4 text-base text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
+                    <p className="mt-2 text-xs text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
                  </div>
                )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Panel: Chat, Questions, Notes, Feedback */}
-        <Card className="w-full lg:w-[380px] xl:w-[420px] flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-230px)] lg:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250">
+        {/* Right Panel: Chat, Questions, Notes, Feedback - Now takes more space */}
+        <Card className="flex-1 lg:w-2/3 xl:w-3/4 flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-100px)] lg:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
                 <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
