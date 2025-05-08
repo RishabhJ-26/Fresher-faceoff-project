@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { FC } from 'react';
@@ -11,7 +10,6 @@ const CustomCursor: FC = () => {
   const [isHoveringInteractive, setIsHoveringInteractive] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const requestRef = useRef<number>();
-  const previousTimeRef = useRef<number>();
   const lastMouseEventRef = useRef<MouseEvent | null>(null);
 
 
@@ -23,7 +21,6 @@ const CustomCursor: FC = () => {
         const currentX = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--x') || clientX.toString());
         const currentY = parseFloat(cursorOutlineRef.current.style.getPropertyValue('--y') || clientY.toString());
         
-        // Adjusted lerp factor for a slightly faster/smoother follow
         const lerpFactor = 0.35; 
         const newX = currentX + (clientX - currentX) * lerpFactor;
         const newY = currentY + (clientY - currentY) * lerpFactor;
@@ -66,7 +63,9 @@ const CustomCursor: FC = () => {
     };
 
     const onMouseLeaveDocument = () => {
-      if (!document.fullscreenElement) { // Only hide if not in fullscreen
+      // Hide the cursor if mouse leaves document, but only if not in fullscreen.
+      // If in fullscreen, the custom cursor should remain visible as the browser cursor is hidden by global CSS.
+      if (!document.fullscreenElement) {
         setIsVisible(false);
       }
     };
@@ -75,9 +74,10 @@ const CustomCursor: FC = () => {
       if (document.fullscreenElement) {
         setIsVisible(true); // Ensure cursor is visible when entering fullscreen
       } else {
-        // Check if mouse is outside viewport when exiting fullscreen
-        // This part is tricky as mouse position isn't tracked if outside
-        // For simplicity, we rely on subsequent mousemove/mouseenter to show it
+        // When exiting fullscreen, also ensure the cursor is initially set to visible.
+        // The onMouseLeaveDocument handler will then correctly hide it if the mouse
+        // is indeed outside the document boundaries and we are no longer in fullscreen.
+        setIsVisible(true);
       }
     };
 
@@ -105,7 +105,7 @@ const CustomCursor: FC = () => {
           'fixed top-0 left-0 rounded-full pointer-events-none z-[9999]', // Removed transition-all duration-75 for direct control via rAF
           'w-8 h-8 border-2',
           isHoveringInteractive ? 'scale-150 border-accent/80 opacity-80' : 'scale-100 border-primary/60 opacity-60',
-          isVisible ? 'opacity-60' : 'opacity-0 scale-0',
+          isVisible ? 'opacity-60' : 'opacity-0 scale-0', // Controls visibility
           'transition-transform duration-75 ease-out' // Keep transform transition for scale/opacity changes
         )}
         style={{ transform: 'translate3d(-100%, -100%, 0) scale(1)' }} 
@@ -116,7 +116,7 @@ const CustomCursor: FC = () => {
           'fixed top-0 left-0 rounded-full pointer-events-none z-[9999]',
           'w-2 h-2', 
           isHoveringInteractive ? 'bg-accent scale-150' : 'bg-primary scale-100',
-          isVisible ? 'opacity-100' : 'opacity-0 scale-0',
+          isVisible ? 'opacity-100' : 'opacity-0 scale-0', // Controls visibility
           'transition-all duration-100 ease-out' // Keep transition for bg/scale changes
         )}
         style={{ transform: 'translate3d(-100%, -100%, 0) scale(1)' }} 
