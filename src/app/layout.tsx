@@ -1,9 +1,10 @@
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers/providers";
-import CustomCursor from "@/components/custom-cursor"; // Import CustomCursor
+import CustomCursor from "@/components/custom-cursor"; 
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -19,9 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
-      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground`}>
+      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground overflow-hidden`}>
         <Providers>
-          <CustomCursor /> {/* Add CustomCursor component here */}
+          <CustomCursor />
           {children}
           <Toaster />
         </Providers>
@@ -29,3 +30,4 @@ export default function RootLayout({
     </html>
   );
 }
+
