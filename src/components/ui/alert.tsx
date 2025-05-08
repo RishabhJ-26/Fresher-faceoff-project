@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { AlertTriangle } from "lucide-react" // Added import
+import { AlertTriangle as DefaultAlertTriangleIcon } from "lucide-react"; // Renamed to avoid conflict
 
 import { cn } from "@/lib/utils"
 
@@ -9,9 +9,9 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default: "bg-background text-foreground border-border", // Ensure default uses theme border
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "border-destructive/60 text-destructive dark:border-destructive/70 [&>svg]:text-destructive bg-destructive/5 dark:bg-destructive/10", // Enhanced destructive variant
       },
     },
     defaultVariants: {
@@ -22,20 +22,27 @@ const alertVariants = cva(
 
 const Alert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, children, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(alertVariants({ variant }), className)}
-    {...props}
-  >
-    {variant === "destructive" && !React.Children.toArray(children).find(child => React.isValidElement(child) && child.type === AlertTriangle) && (
-      <AlertTriangle className="h-4 w-4" />
-    )}
-    {children}
-  </div>
-))
+  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants> & {
+    icon?: React.ElementType; // Allow custom icon
+  }
+>(({ className, variant, children, icon: Icon, ...props }, ref) => {
+  const DefaultIcon = variant === "destructive" ? DefaultAlertTriangleIcon : null;
+  const IconToRender = Icon || DefaultIcon;
+
+  return (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    >
+      {IconToRender && !React.Children.toArray(children).find(child => React.isValidElement(child) && child.type === IconToRender) && (
+         <IconToRender className="h-4 w-4" />
+      )}
+      {children}
+    </div>
+  )
+})
 Alert.displayName = "Alert"
 
 const AlertTitle = React.forwardRef<

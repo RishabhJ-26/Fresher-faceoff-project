@@ -1,6 +1,7 @@
 
 "use client";
 
+import type { ChangeEvent } from "react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,9 @@ import {
   Settings,
   Info,
   Users,
+  LogIn,
+  Sparkles,
+  CameraOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -58,7 +62,7 @@ export function FresherFaceoffPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenShared, setIsScreenShared] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState(true); // Assume true initially, verify on connect
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [copied, setCopied] = useState(false);
 
   const { toast } = useToast();
@@ -69,7 +73,6 @@ export function FresherFaceoffPage() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
 
-
   const stopStream = (stream: MediaStream | null) => {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
@@ -77,6 +80,18 @@ export function FresherFaceoffPage() {
   };
 
   const startCameraStream = useCallback(async (showErrorToast = true) => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+        if (showErrorToast) {
+             toast({
+                variant: "destructive",
+                title: "Media Devices Not Supported",
+                description: "Your browser does not support camera/microphone access.",
+            });
+        }
+        setHasCameraPermission(false);
+        return null;
+    }
+
     if (localStreamRef.current) {
       stopStream(localStreamRef.current);
       localStreamRef.current = null;
@@ -105,12 +120,7 @@ export function FresherFaceoffPage() {
   }, [isMuted, toast]);
 
   const startScreenShareStream = useCallback(async () => {
-    if (screenStreamRef.current) {
-        stopStream(screenStreamRef.current);
-        screenStreamRef.current = null;
-    }
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+     if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         toast({
           variant: "destructive",
           title: "Screen Share Not Supported",
@@ -118,6 +128,12 @@ export function FresherFaceoffPage() {
         });
         return null;
       }
+
+    if (screenStreamRef.current) {
+        stopStream(screenStreamRef.current);
+        screenStreamRef.current = null;
+    }
+    try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } });
       screenStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -129,7 +145,7 @@ export function FresherFaceoffPage() {
         if (localStreamRef.current && localVideoRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current;
         } else {
-           startCameraStream(); 
+           startCameraStream(false); // Don't show error if camera was already denied
         }
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
@@ -141,7 +157,8 @@ export function FresherFaceoffPage() {
         toast({
           variant: "destructive",
           title: "Screen Share Permission Denied",
-          description: "Screen sharing access was denied. If you are in an embedded environment (e.g., an IDE or iframe), try opening the application in a standalone browser window. Otherwise, check your browser's screen recording permissions.",
+          description: "Screen sharing access was denied. If in an embedded environment, try a standalone browser. Otherwise, check browser permissions.",
+          duration: 7000,
         });
       } else {
         toast({
@@ -160,12 +177,10 @@ export function FresherFaceoffPage() {
     if (isConnected) {
       startCameraStream().then(stream => {
         if (stream && remoteVideoRef.current) {
-          // Simulate peer connection for demo - clone local stream to remote for visualization
           const peerStream = new MediaStream();
           stream.getTracks().forEach(track => {
             const clonedTrack = track.clone();
-            // Simulate remote user not being muted initially
-            if (clonedTrack.kind === 'audio') clonedTrack.enabled = true;
+            if (clonedTrack.kind === 'audio') clonedTrack.enabled = true; // Simulate remote not muted
             peerStream.addTrack(clonedTrack);
           });
           remoteVideoRef.current.srcObject = peerStream;
@@ -179,6 +194,7 @@ export function FresherFaceoffPage() {
       if (localVideoRef.current) localVideoRef.current.srcObject = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setIsScreenShared(false); 
+      setHasCameraPermission(null); // Reset permission status on disconnect
     }
 
     return () => {
@@ -201,21 +217,25 @@ export function FresherFaceoffPage() {
     if (!interviewId.trim()) {
       toast({
         variant: "destructive",
-        title: "Interview ID Missing",
-        description: "Please enter an Interview ID or create a new one to connect.",
+        title: "Interview ID Required",
+        description: "Please enter an Interview ID or create a new one.",
       });
       return;
     }
 
     setIsConnecting(true);
-    // Simulate network delay
     setTimeout(() => {
-      // Logic to check if interviewId exists (if it's not a new one)
-      if (!FAKE_ACTIVE_INTERVIEWS.has(interviewId.replace("FF-NEW-", "FF-")) && !interviewId.startsWith("FF-NEW-")) {
+      const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
+      if (!FAKE_ACTIVE_INTERVIEWS.has(effectiveId) && !interviewId.startsWith("FF-NEW-")) {
          toast({
            variant: "destructive",
            title: "Connection Failed",
-           description: `Interview ID "${interviewId}" not found. Please check the ID or create a new one.`,
+           description: (
+             <div>
+                <p>No one with ID <strong className="text-destructive-foreground">{interviewId}</strong> found.</p>
+                <p className="text-xs mt-1">Please check the ID or create a new interview.</p>
+             </div>
+            ),
          });
          setIsConnecting(false);
          return;
@@ -225,46 +245,47 @@ export function FresherFaceoffPage() {
       setIsConnecting(false);
       let currentId = interviewId;
       if (interviewId.startsWith("FF-NEW-")) {
-          // This is a new interview being started by this user
-          currentId = interviewId.replace("FF-NEW-", "FF-");
-          FAKE_ACTIVE_INTERVIEWS.add(currentId); // Add to "active" list
-          setInterviewId(currentId); // Update the displayed ID
+          currentId = effectiveId;
+          FAKE_ACTIVE_INTERVIEWS.add(currentId); 
+          setInterviewId(currentId); 
           toast({
             title: "Interview Created & Joined!",
-            description: `You are connected to: ${currentId}. Share this ID with your peer.`,
+            description: `Share ID: ${currentId} with your peer.`,
           });
       } else {
-        // Joining an existing interview
         toast({
           title: "Connection Successful!",
-          description: `You are connected to interview: ${currentId}`,
+          description: `Joined interview: ${currentId}`,
         });
       }
     }, 1500);
   };
   
   const handleCreateInterview = () => {
-    // Generate a more user-friendly ID structure
-    const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newId = `FF-NEW-${randomPart}`;
     setInterviewId(newId);
     toast({
       title: "New Interview ID Generated!",
       description: (
         <div>
-          <p>Your new Interview ID is: <strong className="text-accent">{newId}</strong></p>
-          <p className="text-xs mt-1">Share this with your peer. They can join once you click 'Join Interview'.</p>
+          <p>Your new ID: <strong className="text-accent">{newId.replace("FF-NEW-","FF-")}</strong> (copied)</p>
+          <p className="text-xs mt-1">Click 'Join Interview' to start. Share this ID with your peer.</p>
         </div>
       ),
-      duration: 7000,
+      duration: 8000,
     });
+    navigator.clipboard.writeText(newId.replace("FF-NEW-","FF-"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
   
   const handleDisconnect = () => {
     setIsConnected(false);
     setMessages([]);
+    const effectiveId = interviewId.replace("FF-NEW-", "FF-");
+    FAKE_ACTIVE_INTERVIEWS.delete(effectiveId); 
     setInterviewId(""); 
-    FAKE_ACTIVE_INTERVIEWS.delete(interviewId); // Clean up demo ID
     toast({ title: "Disconnected", description: "You have left the interview session." });
   };
 
@@ -278,11 +299,10 @@ export function FresherFaceoffPage() {
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
       
-      // Simulate peer response
       setTimeout(() => {
         const peerResponse: Message = {
           id: `msg-${Date.now() + 1}-${Math.random()}`, 
-          text: `Thanks for your message: "${newMessage.length > 30 ? newMessage.substring(0,27) + '...' : newMessage}"`, 
+          text: `Received: "${newMessage.length > 25 ? newMessage.substring(0,22) + '...' : newMessage}"`, 
           sender: "peer", 
           timestamp: new Date() 
         };
@@ -309,15 +329,16 @@ export function FresherFaceoffPage() {
     }
     const newVideoOffState = !isVideoOff;
     
-    if (localStreamRef.current) { // If stream exists, toggle track
+    if (localStreamRef.current) { 
         localStreamRef.current.getVideoTracks().forEach(track => {
           track.enabled = !newVideoOffState;
         });
         setIsVideoOff(newVideoOffState);
-    } else if (!newVideoOffState) { // If no stream and trying to turn ON
+    } else if (!newVideoOffState) { 
         const stream = await startCameraStream();
-        if(stream) setIsVideoOff(false); // Successfully started
-    } else { // If no stream and trying to turn OFF (or already off)
+        if(stream) setIsVideoOff(false);
+        else setIsVideoOff(true); // if stream failed, it's still off
+    } else { 
         setIsVideoOff(true);
     }
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
@@ -325,27 +346,25 @@ export function FresherFaceoffPage() {
 
   const toggleShareScreen = async () => {
     if (!isScreenShared) { 
-        // Turning screen share ON
-        if(localStreamRef.current){ // Stop camera stream if it exists
+        if(localStreamRef.current){ 
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null; 
         }
-        if (localVideoRef.current) localVideoRef.current.srcObject = null; // Clear video element
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
         
         const stream = await startScreenShareStream();
-        if (stream) { // Screen share started successfully
+        if (stream) { 
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else { // Screen share failed or was cancelled, try to restart camera
-           await startCameraStream(); 
+        } else { 
+           await startCameraStream(false); 
         }
     } else { 
-        // Turning screen share OFF
         if(screenStreamRef.current){
             screenStreamRef.current.getTracks().forEach(track => track.stop());
             screenStreamRef.current = null;
         }
         setIsScreenShared(false);
-        await startCameraStream(); // Restart camera stream
+        await startCameraStream(false);
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
     }
   };
@@ -363,35 +382,36 @@ export function FresherFaceoffPage() {
 
   if (!isConnected) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background p-6 font-sans animate-background-gradient">
-        <Card className="w-full max-w-lg shadow-2xl border-primary/20 rounded-2xl animate-pop bg-card/80 backdrop-blur-md">
-          <CardHeader className="text-center p-8">
-            <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-primary to-accent rounded-full w-fit shadow-xl shadow-primary/30 transform transition-transform hover:scale-110">
-             <Users className="h-12 w-12 text-primary-foreground" />
+      <div className="flex items-center justify-center min-h-screen bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan">
+        <Card className="w-full max-w-md shadow-depth-3 rounded-2xl animate-pop-in bg-card/90 backdrop-blur-lg border-primary/10">
+          <CardHeader className="text-center p-6 sm:p-8">
+            <div className="mx-auto mb-6 p-3 bg-gradient-to-br from-primary to-accent rounded-2xl w-fit shadow-xl shadow-primary/20 transform transition-all hover:scale-110 duration-300">
+             <Users className="h-10 w-10 sm:h-12 sm:w-12 text-primary-foreground" />
             </div>
-            <div className="animate-fade-in delay-100">
-              <CardTitle className="text-4xl font-bold text-primary tracking-tight">Fresher Faceoff</CardTitle>
-              <CardDescription className="text-lg text-muted-foreground pt-2">Peer-to-Peer Interview Platform</CardDescription>
+            <div className="animate-fade-in-up delay-100">
+              <CardTitle className="text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">Fresher Faceoff</CardTitle>
+              <CardDescription className="text-md sm:text-lg text-muted-foreground pt-2">Your Peer Interview Platform</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6 p-8">
-            <div className="relative animate-fade-in delay-200">
+          <CardContent className="space-y-6 p-6 sm:p-8">
+            <div className="relative animate-fade-in-up delay-200">
+              <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Enter or Generate Interview ID"
+                placeholder="Enter Interview ID"
                 value={interviewId}
-                onChange={(e) => setInterviewId(e.target.value)}
-                className="text-base h-14 focus-visible:ring-accent focus-visible:ring-2 rounded-xl shadow-inner pl-4 pr-12 text-lg"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setInterviewId(e.target.value)}
+                className="text-base h-14 focus-visible:ring-accent focus-visible:ring-2 rounded-xl shadow-inner-soft pl-12 pr-12 text-md"
                 aria-label="Interview ID Input"
               />
               {interviewId && (
                  <Button variant="ghost" size="icon" onClick={handleCopyInterviewId} className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 text-muted-foreground hover:text-primary" aria-label="Copy Interview ID">
-                    {copied ? <Check className="h-6 w-6 text-green-500" /> : <Copy className="h-6 w-6" />}
+                    {copied ? <Check className="h-6 w-6 text-green-500 animate-pop-in" /> : <Copy className="h-6 w-6" />}
                 </Button>
               )}
             </div>
-            <div className="animate-fade-in delay-300">
-              <Button onClick={handleConnect} className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground text-xl font-semibold rounded-xl shadow-lg hover:shadow-primary/40 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.02]" disabled={isConnecting}>
+            <div className="animate-fade-in-up delay-300">
+              <Button onClick={handleConnect} className="w-full h-14 bg-primary hover:bg-primary/80 text-primary-foreground text-lg font-semibold rounded-xl shadow-strong hover:shadow-primary/50 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.02] hover:-translate-y-0.5 active:shadow-soft">
                 {isConnecting ? (
                   <>
                     <Loader2 className="mr-2.5 h-6 w-6 animate-spin" />
@@ -399,30 +419,30 @@ export function FresherFaceoffPage() {
                   </>
                 ) : (
                   <>
-                    <Phone className="mr-2.5 h-6 w-6" /> Join Interview
+                    <Phone className="mr-2.5 h-5 w-5" /> Join Interview
                   </>
                 )}
               </Button>
             </div>
-            <div className="animate-fade-in delay-400">
-              <div className="relative py-3">
+            <div className="animate-fade-in-up delay-400">
+              <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border/70" />
                 </div>
-                <div className="relative flex justify-center text-sm uppercase">
-                  <span className="bg-card/80 px-3 text-muted-foreground rounded-full">
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card/90 px-3 text-muted-foreground rounded-full">
                     Or
                   </span>
                 </div>
               </div>
-              <Button onClick={handleCreateInterview} variant="outline" className="w-full h-14 text-xl border-primary/60 hover:bg-primary/10 hover:text-primary rounded-xl shadow-md hover:shadow-primary/20 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.02]">
-                <UserPlus className="mr-2.5 h-6 w-6" /> Create New
+              <Button onClick={handleCreateInterview} variant="outline" className="w-full h-14 text-lg border-primary/50 hover:bg-primary/5 hover:text-primary rounded-xl shadow-soft hover:shadow-primary/30 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.02] hover:-translate-y-0.5 active:shadow-inner-soft">
+                <Sparkles className="mr-2.5 h-5 w-5" /> Create New Interview
               </Button>
             </div>
           </CardContent>
-          <CardFooter className="text-center text-sm text-muted-foreground p-8 animate-fade-in delay-500">
-            <Info className="h-4 w-4 mr-1.5 inline-block"/>
-            Ensure a stable internet connection and allow camera/microphone access.
+          <CardFooter className="text-center text-xs text-muted-foreground p-6 sm:p-8 animate-fade-in-up delay-500">
+            <Info className="h-4 w-4 mr-1.5 inline-block flex-shrink-0"/>
+            Connect with peers for mock interviews. Allow camera & mic access for the best experience.
           </CardFooter>
         </Card>
       </div>
@@ -431,115 +451,124 @@ export function FresherFaceoffPage() {
 
   // Connected State UI
   return (
-    <TooltipProvider delayDuration={100}>
+    <TooltipProvider delayDuration={150}>
     <div className="flex flex-col h-screen bg-secondary overflow-hidden antialiased font-sans">
-      {/* Header */}
-      <header className="bg-background/80 backdrop-blur-md p-3 shadow-lg flex justify-between items-center border-b border-border/50 z-10">
-        <div className="flex items-center gap-3 animate-slide-in-left">
-          <Users className="h-8 w-8 text-primary"/>
-          <h1 className="text-2xl font-semibold text-primary tracking-tight">Fresher Faceoff</h1>
+      <header className="bg-background/80 backdrop-blur-md p-3 shadow-strong flex justify-between items-center border-b border-border/30 z-20">
+        <div className="flex items-center gap-2 animate-slide-in-left-smooth">
+          <Users className="h-7 w-7 text-primary"/>
+          <h1 className="text-xl font-semibold text-primary tracking-tight hidden sm:block">Fresher Faceoff</h1>
         </div>
-        <div className="flex items-center gap-2 text-sm animate-fade-in delay-200">
+        <div className="flex items-center gap-2 text-sm animate-fade-in-down delay-200">
             <span className="text-muted-foreground hidden md:inline">ID:</span> 
-            <span className="font-semibold text-foreground bg-primary/10 px-2 py-1 rounded-md">{interviewId.replace("FF-NEW-", "FF-")}</span>
+            <span className="font-mono text-foreground bg-primary/10 px-3 py-1.5 rounded-lg shadow-inner-soft text-xs sm:text-sm">{interviewId.replace("FF-NEW-", "FF-")}</span>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={handleCopyInterviewId} className="h-9 w-9 text-muted-foreground hover:text-primary" aria-label="Copy Interview ID">
-                        {copied ? <Check className="h-5 w-5 text-green-500 animate-pop" /> : <Copy className="h-5 w-5" />}
+                    <Button variant="ghost" size="icon" onClick={handleCopyInterviewId} className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg" aria-label="Copy Interview ID">
+                        {copied ? <Check className="h-5 w-5 text-green-500 animate-pop-in" /> : <Copy className="h-5 w-5" />}
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>Copy Interview ID</p></TooltipContent>
             </Tooltip>
         </div>
-        <Button onClick={handleDisconnect} variant="destructive" size="sm" className="font-medium rounded-lg shadow-md hover:shadow-destructive/30 transition-all duration-200 active:scale-95 transform hover:scale-[1.03] animate-slide-in-right">
+        <Button onClick={handleDisconnect} variant="destructive" size="sm" className="font-medium rounded-lg shadow-md hover:shadow-destructive/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.03] animate-slide-in-right-smooth">
           <LogOut className="mr-1.5 h-4 w-4" /> Leave
         </Button>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden bg-modern-gradient">
-        {/* Video Area */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in delay-100">
+      <main className="flex-1 flex flex-col lg:flex-row gap-3 p-3 overflow-hidden bg-soft-gradient">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-up delay-100">
           {/* Local Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl relative bg-muted/20 backdrop-blur-sm">
-            <CardHeader className="p-3 bg-card/60 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl">
-              <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center">
-                <UserPlus className="w-4 h-4 mr-2"/> {isScreenShared ? "Your Screen Share" : "Your Video"}
+          <Card className="overflow-hidden shadow-depth-2 rounded-xl border-border/20 flex flex-col transition-all duration-300 hover:shadow-depth-3 relative bg-card/50 backdrop-blur-sm group">
+            <CardHeader className="p-2.5 bg-card/70 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl">
+              <CardTitle className="text-xs sm:text-sm text-center font-semibold text-primary flex items-center justify-center">
+                <UserPlus className="w-3.5 h-3.5 mr-1.5"/> {isScreenShared ? "Your Screen Share" : "Your Video"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 aspect-video bg-muted/30 flex items-center justify-center relative mt-12"> {/* mt-12 for header height */}
+            <CardContent className="p-0 flex-1 aspect-video bg-muted/20 flex items-center justify-center relative mt-10"> {/* mt for header height */}
               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) ? 'opacity-0' : 'opacity-100')}></video>
               {(isVideoOff && !isScreenShared) && (
-                <Avatar className={cn("w-32 h-32 md:w-40 md:h-40 absolute", !hasCameraPermission && "animate-pulse-subtle")}>
-                  <AvatarFallback className="text-4xl md:text-5xl bg-primary/20 text-primary rounded-full border-2 border-primary/50">
-                    YOU
-                  </AvatarFallback>
-                </Avatar>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50 rounded-b-xl">
+                    <Avatar className={cn("w-24 h-24 md:w-32 md:h-32", hasCameraPermission === false && "animate-pulse-gentle")}>
+                    <AvatarFallback className="text-3xl md:text-4xl bg-primary/20 text-primary rounded-full border-2 border-primary/40">
+                        YOU
+                    </AvatarFallback>
+                    </Avatar>
+                    {hasCameraPermission === false && <p className="mt-3 text-xs text-destructive">Camera not available</p>}
+                </div>
               )}
-               { !hasCameraPermission && !isScreenShared && (
-                 <Alert variant="destructive" className="absolute bottom-3 left-3 right-3 md:left-4 md:right-auto md:w-auto max-w-xs text-xs p-2 shadow-lg rounded-md animate-fade-in bg-destructive/80 backdrop-blur-sm text-destructive-foreground">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle className="text-sm font-semibold">Camera Error</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    Camera access denied or not found.
+               { hasCameraPermission === false && !isScreenShared && !isVideoOff && ( // Show if camera was attempted but failed
+                 <Alert variant="destructive" className="absolute bottom-2 left-2 right-2 md:left-3 md:right-auto md:w-auto max-w-xs text-xs p-1.5 shadow-lg rounded-md animate-fade-in-up bg-destructive/80 backdrop-blur-sm text-destructive-foreground">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <AlertTitle className="text-xs font-semibold">Camera Error</AlertTitle>
+                  <AlertDescription className="text-xs opacity-90">
+                    Access denied or not found.
                   </AlertDescription>
                 </Alert>
                )}
-               {/* Status icons for local video */}
-               <div className="absolute top-14 right-2 flex flex-col gap-2 z-20 p-1 bg-black/20 rounded-md">
-                  {isMuted && <MicOff className="w-5 h-5 text-red-400" />}
-                  {isVideoOff && !isScreenShared && <VideoOff className="w-5 h-5 text-red-400" />}
+               <div className="absolute top-11 right-1.5 flex flex-col gap-1.5 z-20 p-1 bg-black/25 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {isMuted && <MicOff className="w-4 h-4 text-red-400" />}
+                  {isVideoOff && !isScreenShared && <VideoOff className="w-4 h-4 text-red-400" />}
+                  {!isMuted && <Mic className="w-4 h-4 text-green-400" />}
+                  {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
+
                </div>
             </CardContent>
           </Card>
           {/* Remote Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl relative bg-muted/20 backdrop-blur-sm">
-             <CardHeader className="p-3 bg-card/60 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl">
-              <CardTitle className="text-sm text-center font-semibold text-foreground flex items-center justify-center">
-                <Users className="w-4 h-4 mr-2 text-accent" /> Peer&apos;s Video
+          <Card className="overflow-hidden shadow-depth-2 rounded-xl border-border/20 flex flex-col transition-all duration-300 hover:shadow-depth-3 relative bg-card/50 backdrop-blur-sm group">
+             <CardHeader className="p-2.5 bg-card/70 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl">
+              <CardTitle className="text-xs sm:text-sm text-center font-semibold text-foreground flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 mr-1.5 text-accent" /> Peer&apos;s Video
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 aspect-video bg-muted/30 flex items-center justify-center mt-12">
+            <CardContent className="p-0 flex-1 aspect-video bg-muted/20 flex items-center justify-center mt-10">
                <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
-               {/* Placeholder when remote video is not available - you might need state for this */}
-               {/* <Avatar className="w-32 h-32 md:w-40 md:h-40 absolute"><AvatarFallback className="text-4xl md:text-5xl bg-accent/20 text-accent rounded-full border-2 border-accent/50">PEER</AvatarFallback></Avatar> */}
+               {/* Placeholder for remote, assuming srcObject handles absence */}
+               {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject) && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50 rounded-b-xl">
+                    <Avatar className="w-24 h-24 md:w-32 md:h-32">
+                        <AvatarFallback className="text-3xl md:text-4xl bg-accent/20 text-accent rounded-full border-2 border-accent/40">PEER</AvatarFallback>
+                    </Avatar>
+                    <p className="mt-3 text-xs text-muted-foreground">Waiting for peer...</p>
+                 </div>
+               )}
             </CardContent>
           </Card>
         </div>
 
         {/* Chat Area */}
-        <Card className="w-full lg:w-96 xl:w-[26rem] flex flex-col shadow-xl rounded-xl border-border/30 max-h-[calc(100vh-220px)] lg:max-h-full transition-all duration-300 hover:shadow-2xl bg-card/70 backdrop-blur-md animate-fade-in delay-200">
-          <CardHeader className="p-4 border-b border-border/50">
-            <CardTitle className="text-xl flex items-center text-primary font-semibold">
-              <MessageSquare className="mr-2.5 h-6 w-6" /> Interview Chat
+        <Card className="w-full lg:w-80 xl:w-96 flex flex-col shadow-depth-2 rounded-xl border-border/20 max-h-[calc(100vh-200px)] lg:max-h-full transition-all duration-300 hover:shadow-depth-3 bg-card/60 backdrop-blur-md animate-fade-in-up delay-200">
+          <CardHeader className="p-3 border-b border-border/30">
+            <CardTitle className="text-lg flex items-center text-primary font-semibold">
+              <MessageSquare className="mr-2 h-5 w-5" /> Interview Chat
             </CardTitle>
           </CardHeader>
-          <ScrollArea className="flex-1 p-4 bg-background/40" viewportRef={chatScrollAreaRef}>
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 p-3 bg-background/30" viewportRef={chatScrollAreaRef}>
+            <div className="space-y-3.5">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={cn(
-                    "flex animate-slide-in-bottom",
+                    "flex animate-slide-in-bottom-fast",
                     msg.sender === "me" ? "justify-end" : "justify-start"
                   )}
                 >
-                  <div className={cn("flex items-end gap-2 max-w-[90%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
-                    <Avatar className={cn("h-8 w-8 shadow-sm", msg.sender === "me" ? "ml-2" : "mr-2")}>
-                      <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed'}/40/40` : `https://picsum.photos/seed/${'peerseed'}/40/40`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "male avatar" : "female avatar"}/>
-                      <AvatarFallback className={cn(msg.sender === "me" ? "bg-primary/30 text-primary" : "bg-accent/30 text-accent")}>
+                  <div className={cn("flex items-end gap-1.5 max-w-[85%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
+                    <Avatar className={cn("h-7 w-7 shadow-soft", msg.sender === "me" ? "ml-1.5" : "mr-1.5")}>
+                       <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed'}/32/32` : `https://picsum.photos/seed/${'peerseed'}/32/32`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "male avatar" : "female avatar"}/>
+                      <AvatarFallback className={cn("text-xs",msg.sender === "me" ? "bg-primary/30 text-primary" : "bg-accent/30 text-accent")}>
                         {msg.sender === "me" ? "ME" : "P"}
                       </AvatarFallback>
                     </Avatar>
                     <div
-                      className={`p-3 rounded-2xl shadow-md ${
+                      className={cn("p-2.5 rounded-xl shadow-soft text-sm",
                         msg.sender === "me"
-                          ? "bg-primary text-primary-foreground rounded-br-md"
-                          : "bg-card text-card-foreground rounded-bl-md border border-border/60" 
-                      }`}
+                          ? "bg-primary text-primary-foreground rounded-br-lg"
+                          : "bg-card text-card-foreground rounded-bl-lg border border-border/50" 
+                      )}
                     >
-                      <p className="text-sm break-words leading-relaxed">{msg.text}</p>
-                      <p className={`text-xs mt-1.5 ${msg.sender === "me" ? "text-primary-foreground/80" : "text-muted-foreground/80"} text-right`}>
+                      <p className="break-words leading-snug">{msg.text}</p>
+                      <p className={cn("text-xs mt-1", msg.sender === "me" ? "text-primary-foreground/70" : "text-muted-foreground/70", "text-right")}>
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -547,64 +576,66 @@ export function FresherFaceoffPage() {
                 </div>
               ))}
                {messages.length === 0 && (
-                <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50"/>
-                  No messages yet. <br/> Start the conversation!
+                <div className="text-center text-muted-foreground py-10 text-xs animate-fade-in-up">
+                  <MessageSquare className="h-10 w-10 mx-auto mb-2.5 text-muted-foreground/40"/>
+                  No messages yet. Start the conversation!
                 </div>
               )}
             </div>
           </ScrollArea>
-          <CardFooter className="p-3 border-t border-border/50 bg-card/60 backdrop-blur-sm">
+          <CardFooter className="p-2.5 border-t border-border/30 bg-card/50 backdrop-blur-sm">
             <div className="flex w-full items-center space-x-2">
               <Input
                 type="text"
-                placeholder="Type your message..."
+                placeholder="Type a message..."
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => {if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage();}}}
-                className="flex-1 h-11 focus-visible:ring-accent rounded-lg shadow-inner text-sm"
+                className="flex-1 h-10 focus-visible:ring-accent rounded-lg shadow-inner-soft text-sm"
                 aria-label="New message input"
               />
-              <Button type="submit" size="icon" onClick={handleSendMessage} className="bg-accent hover:bg-accent/90 rounded-lg w-11 h-11 shadow-md hover:shadow-accent/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.05]" aria-label="Send message">
-                <Send className="h-5 w-5 text-accent-foreground" />
+              <Button type="submit" size="icon" onClick={handleSendMessage} className="bg-accent hover:bg-accent/80 rounded-lg w-10 h-10 shadow-md hover:shadow-accent/50 transition-all duration-200 active:scale-95 transform hover:scale-[1.05]" aria-label="Send message">
+                <Send className="h-4.5 w-4.5 text-accent-foreground" />
               </Button>
             </div>
           </CardFooter>
         </Card>
       </main>
 
-      {/* Controls Footer */}
-      <footer className="bg-background/80 backdrop-blur-md p-3 shadow-t-strong flex justify-center items-center space-x-3 sm:space-x-4 border-t border-border/50 animate-fade-in delay-300">
+      <footer className="bg-background/80 backdrop-blur-md p-2.5 shadow-t-strong flex justify-center items-center space-x-2 sm:space-x-3 border-t border-border/30 animate-fade-in-up delay-300">
         {[
           { id: 'mute', Icon: isMuted ? MicOff : Mic, active: isMuted, action: toggleMute, label: isMuted ? "Unmute" : "Mute", destructive: isMuted },
-          { id: 'video', Icon: isVideoOff ? VideoOff : Video, active: isVideoOff, action: toggleVideo, label: isVideoOff ? "Start Video" : "Stop Video", destructive: isVideoOff, disabled: isScreenShared },
-          { id: 'screen', Icon: isScreenShared ? ScreenShareOff : ScreenShare, active: isScreenShared, action: toggleShareScreen, label: isScreenShared ? "Stop Sharing" : "Share Screen", destructive: false /* Special active color for screen share */ },
-          { id: 'disconnect', Icon: PhoneOff, active: false, action: handleDisconnect, label: "Leave Call", destructive: true, main: true },
+          { id: 'video', Icon: isVideoOff ? CameraOff : Video, active: isVideoOff, action: toggleVideo, label: isVideoOff ? "Start Video" : "Stop Video", destructive: isVideoOff, disabled: isScreenShared },
+          { id: 'screen', Icon: isScreenShared ? ScreenShareOff : ScreenShare, active: isScreenShared, action: toggleShareScreen, label: isScreenShared ? "Stop Sharing" : "Share Screen", specialActive: isScreenShared },
+          { id: 'disconnect', Icon: PhoneOff, action: handleDisconnect, label: "Leave Call", destructive: true, main: true },
         ].map(control => (
           <Tooltip key={control.id}>
             <TooltipTrigger asChild>
               <Button 
-                variant={control.destructive && control.active || (control.id === 'disconnect') ? "destructive" : (control.active ? "secondary" : "outline")}
+                variant={control.destructive && control.active ? "destructive" : 
+                         control.main ? "destructive" : 
+                         control.specialActive ? "default" : // For screen share active state
+                         control.active ? "secondary" : "outline"}
                 size="lg" 
                 onClick={control.action} 
                 disabled={control.disabled}
                 className={cn(
-                  "rounded-full p-0", 
-                  control.main ? "w-20 h-14 sm:w-24 sm:h-14" : "w-14 h-14 sm:w-16 sm:h-16",
-                  "shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.05]", 
-                  control.destructive && control.active ? "bg-destructive hover:bg-destructive/90 focus:ring-destructive/50" 
-                    : control.id === 'disconnect' ? "bg-destructive hover:bg-destructive/90 focus:ring-destructive/50" 
-                    : control.id === 'screen' && control.active ? "bg-accent hover:bg-accent/90 text-accent-foreground focus:ring-accent/50"
-                    : control.active ? "bg-secondary text-secondary-foreground focus:ring-primary/50" 
-                    : "focus:ring-primary/50 hover:bg-secondary/70",
-                  control.disabled && "opacity-50 cursor-not-allowed hover:scale-100"
+                  "rounded-full p-0 aspect-square", 
+                  control.main ? "w-16 h-16 sm:w-18 sm:h-18" : "w-12 h-12 sm:w-14 sm:h-14",
+                  "shadow-strong hover:shadow-depth-1 transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.04] hover:-translate-y-0.5", 
+                  control.main ? "bg-destructive hover:bg-destructive/85 focus:ring-destructive/60" :
+                  control.destructive && control.active ? "bg-destructive hover:bg-destructive/85 focus:ring-destructive/60" 
+                    : control.specialActive ? "bg-accent hover:bg-accent/85 text-accent-foreground focus:ring-accent/60"
+                    : control.active ? "bg-secondary text-secondary-foreground focus:ring-primary/60" 
+                    : "border-border/70 hover:border-primary focus:ring-primary/60 hover:bg-secondary/60",
+                  control.disabled && "opacity-60 cursor-not-allowed hover:scale-100 hover:translate-y-0"
                 )} 
                 aria-label={control.label}
               >
-                <control.Icon className={control.main ? "h-6 w-6 sm:h-7 sm:w-7" : "h-6 w-6 sm:h-7 sm:w-7"} />
+                <control.Icon className={control.main ? "h-6 w-6 sm:h-7 sm:w-7" : "h-5 w-5 sm:h-6 sm:w-6"} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>{control.label}</p></TooltipContent>
+            <TooltipContent side="top" className="mb-1"><p>{control.label}</p></TooltipContent>
           </Tooltip>
         ))}
       </footer>
@@ -612,3 +643,4 @@ export function FresherFaceoffPage() {
     </TooltipProvider>
   );
 }
+
