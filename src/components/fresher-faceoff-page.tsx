@@ -56,6 +56,8 @@ import {
   Star,
   MessageCircleQuestion,
   Users2,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -113,6 +115,7 @@ export function FresherFaceoffPage() {
   const [isScreenShared, setIsScreenShared] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null); 
   const [copied, setCopied] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const [interviewCategory, setInterviewCategory] = useState<string>("");
   const [customTopic, setCustomTopic] = useState<string>("");
@@ -140,6 +143,7 @@ export function FresherFaceoffPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const mainContainerRef = useRef<HTMLDivElement>(null);
 
 
   const stopStream = (stream: MediaStream | null) => {
@@ -161,25 +165,23 @@ export function FresherFaceoffPage() {
         return null;
     }
 
+    // If a camera stream already exists and video is not off, ensure tracks are enabled correctly.
     if (localStreamRef.current) {
-        // If a camera stream already exists, ensure its tracks reflect the current state.
-        // This can happen if permission was granted after an initial denial.
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !isMuted);
         localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
         if (localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current && !isScreenShared) {
              localVideoRef.current.srcObject = localStreamRef.current;
         }
-        setHasCameraPermission(true); // Assume if stream exists, permission was granted
+        setHasCameraPermission(true); 
         return localStreamRef.current;
     }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
-      if (localVideoRef.current && !isScreenShared) { // Only assign if not screen sharing
+      if (localVideoRef.current && !isScreenShared) { 
         localVideoRef.current.srcObject = stream;
       }
-      // Apply initial mute/video off state to the new stream
       stream.getAudioTracks().forEach(track => track.enabled = !isMuted);
       stream.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
 
@@ -197,7 +199,7 @@ export function FresherFaceoffPage() {
       }
       return null;
     }
-  }, [isMuted, isVideoOff, toast, isScreenShared]);
+  }, [isMuted, isVideoOff, toast, isScreenShared]); // Added isScreenShared
 
   const startScreenShareStream = useCallback(async () => {
      if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
@@ -209,32 +211,30 @@ export function FresherFaceoffPage() {
         return null;
       }
 
-    if (screenStreamRef.current) { // Stop existing screen share if any
+    if (screenStreamRef.current) { 
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
     }
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { cursor: "always" } as MediaTrackConstraints,
-        // audio: true, // Request audio with screen share
+        // audio: true, // Usually screen share audio is not desired or handled separately
       });
       screenStreamRef.current = stream;
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream; // Show screen share locally
+        localVideoRef.current.srcObject = stream; 
       }
       
-      // When screen sharing starts, audio continues from the microphone (localStreamRef.current).
-      // Ensure microphone audio track is enabled if not muted.
       if (localStreamRef.current) {
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !isMuted);
       }
 
-      stream.getVideoTracks()[0].onended = () => { // Listener for when user stops screen share via browser UI
+      stream.getVideoTracks()[0].onended = () => { 
         setIsScreenShared(false);
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
       setIsScreenShared(true);
-      setIsVideoOff(false); // Video is now from screen, so conceptually "on"
+      setIsVideoOff(false); 
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -255,7 +255,7 @@ export function FresherFaceoffPage() {
       setIsScreenShared(false);
       return null;
     }
-  }, [toast, isMuted]); // Added isMuted dependency
+  }, [toast, isMuted]); 
 
 
  useEffect(() => {
@@ -265,59 +265,57 @@ export function FresherFaceoffPage() {
         if (!isMounted) return;
 
         if (isConnected) {
-            if (!localStreamRef.current && hasCameraPermission !== false) {
-                // Attempt to initialize camera stream if not present and not explicitly denied
-                const cameraStream = await startCameraStream(false); // Don't show error toast here, UX handles it
-                if (!isMounted || !cameraStream) {
-                    // If camera failed to start and we intended video to be on, mark it as off
-                    if (!isVideoOff) setIsVideoOff(true); 
-                }
+            if (!localStreamRef.current && hasCameraPermission !== false && !isVideoOff) {
+                await startCameraStream(false); 
             } else if (localStreamRef.current) {
-                // If camera stream exists, ensure its tracks reflect current state
                 localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !isMuted);
                 localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
             }
 
             if (isScreenShared) {
-                if (screenStreamRef.current && localVideoRef.current) {
+                if (screenStreamRef.current && localVideoRef.current && localVideoRef.current.srcObject !== screenStreamRef.current) {
                     localVideoRef.current.srcObject = screenStreamRef.current;
                 }
-                // Ensure camera video is off when screen sharing
-                if (localStreamRef.current) {
+                if (localStreamRef.current) { // Turn off camera video when screen sharing
                     localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
                 }
-            } else { // Not screen sharing, use camera
+            } else { 
                 if (localStreamRef.current && localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
                     localVideoRef.current.srcObject = localStreamRef.current;
                     // Ensure camera video track reflects isVideoOff state
                     localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
                 } else if (!localStreamRef.current && localVideoRef.current) {
-                     localVideoRef.current.srcObject = null; // No camera stream
+                     localVideoRef.current.srcObject = null; 
                 }
             }
 
-            // Simulate peer stream (for local display - this would be replaced by actual WebRTC peer stream)
             if (remoteVideoRef.current) {
-                if(localStreamRef.current) { // Simulate based on local stream if available
+                if(localStreamRef.current) { 
                     const peerStream = new MediaStream();
-                    localStreamRef.current.getTracks().forEach(track => {
+                    // Simulate peer having audio on/off based on our mute, but video always on
+                    localStreamRef.current.getAudioTracks().forEach(track => {
                         const clonedTrack = track.clone();
-                        if (clonedTrack.kind === 'audio') clonedTrack.enabled = !isMuted; // Peer audio reflects local mute
-                        else if (clonedTrack.kind === 'video') clonedTrack.enabled = true; // Peer video always on for simulation
+                        clonedTrack.enabled = !isMuted; // Peer audio reflects our mute for simulation
                         peerStream.addTrack(clonedTrack);
                     });
-                    remoteVideoRef.current.srcObject = peerStream;
-                } else { // If no local stream, show placeholder for peer
+                    localStreamRef.current.getVideoTracks().forEach(track => {
+                       const clonedTrack = track.clone();
+                       clonedTrack.enabled = true; // Peer video always on
+                       peerStream.addTrack(clonedTrack);
+                    });
+                    if (remoteVideoRef.current.srcObject !== peerStream) {
+                         remoteVideoRef.current.srcObject = peerStream;
+                    }
+                } else { 
                     remoteVideoRef.current.srcObject = null;
                 }
             }
-        } else { // Not connected
+        } else { 
             stopStream(localStreamRef.current); localStreamRef.current = null;
             stopStream(screenStreamRef.current); screenStreamRef.current = null;
             if (localVideoRef.current) localVideoRef.current.srcObject = null;
             if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-            setIsScreenShared(false); // Ensure screen share state is reset
-            // Do not reset hasCameraPermission here, it's a persistent state until page reload or new attempt
+            setIsScreenShared(false); 
         }
     };
 
@@ -325,8 +323,6 @@ export function FresherFaceoffPage() {
 
     return () => {
         isMounted = false;
-        // Do not stop streams here on unmount of this effect if component itself is not unmounting.
-        // Streams are stopped on disconnect or full component unmount.
     };
   }, [isConnected, isScreenShared, isMuted, isVideoOff, startCameraStream, hasCameraPermission]); 
 
@@ -351,21 +347,20 @@ export function FresherFaceoffPage() {
     }
     setIsConnecting(true);
     
-    // Attempt to start camera stream, this also sets hasCameraPermission
     const stream = await startCameraStream(false); 
-    if (!stream) {
-        // setIsVideoOff(true); // Camera failed, mark video as off
+    if (!stream && !isVideoOff) { // If camera failed and user didn't intend video to be off
         toast({
             variant: "destructive",
             title: "Camera Access Issue",
             description: "Proceeding without camera. Please check permissions. Some features might be limited.",
             duration: 7000,
         });
-    } else {
-        setIsVideoOff(false); // Camera succeeded, ensure video is marked as on
+        //setIsVideoOff(true); // Keep this commented if we want user to explicitly turn it off
+    } else if (stream) {
+       // setIsVideoOff(false); // Ensure video is on if stream succeeded
     }
 
-    // Simulate network delay for connection
+
     setTimeout(() => {
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
 
@@ -433,7 +428,7 @@ export function FresherFaceoffPage() {
     setMessages([]);
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
     FAKE_ACTIVE_INTERVIEWS.delete(effectiveId);
-    setInterviewId(""); // Clear interview ID on disconnect
+    setInterviewId(""); 
     toast({ title: "Disconnected", description: "You have left the interview session." });
 
     setIsTimerRunning(false);
@@ -454,10 +449,12 @@ export function FresherFaceoffPage() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     
     setIsScreenShared(false);
-    // Don't reset hasCameraPermission, it's a browser state.
-    // Reset visual toggles
     setIsVideoOff(false);
     setIsMuted(false);
+    if (isFullScreen && document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+    setIsFullScreen(false);
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
@@ -493,43 +490,55 @@ export function FresherFaceoffPage() {
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     }
+    // If unmuting, ensure video state isn't unintentionally changed
+    // No need to call setIsVideoOff here unless specifically intended.
     toast({ title: newMutedState ? "Microphone Muted" : "Microphone Unmuted"});
   };
 
 const toggleVideo = async () => {
-    if (isScreenShared) { // If screen sharing, this button stops screen share and attempts to turn camera on
+    if (isScreenShared) { 
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
-        setIsScreenShared(false); // Triggers useEffect to switch source to camera
-        setIsVideoOff(false);    // Explicitly set intention for video to be ON
-        toast({ title: "Screen Share Stopped", description:"Attempting to start camera." });
-        // The useEffect will handle starting camera if needed and applying !isVideoOff
-        if (!localStreamRef.current || hasCameraPermission === false) {
-            await startCameraStream(); // Try to start camera if not available or permission denied
+        setIsScreenShared(false); 
+        
+        // Attempt to turn camera on if it was not explicitly off
+        if (!isVideoOff) {
+            const stream = await startCameraStream();
+            if (stream) {
+                setIsVideoOff(false); // Explicitly set video on
+                toast({ title: "Screen Share Stopped, Camera On" });
+            } else {
+                setIsVideoOff(true); // Failed to start camera
+                toast({ title: "Screen Share Stopped, Camera Failed", description: "Camera could not be started." });
+            }
         } else {
-             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = true); // ensure tracks are enabled
+             toast({ title: "Screen Share Stopped", description: "Camera remains off as per previous state." });
+             if (localStreamRef.current) { // Ensure existing camera stream tracks are disabled
+                 localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
+             }
         }
         return;
     }
 
     const newVideoOffState = !isVideoOff;
-    setIsVideoOff(newVideoOffState);
-
+    
     if (localStreamRef.current) {
         localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !newVideoOffState);
+        setIsVideoOff(newVideoOffState); // Update state after attempting to change track
         toast({ title: newVideoOffState ? "Camera Off" : "Camera On" });
-        if (!newVideoOffState && hasCameraPermission === false) { // Trying to turn ON but permission was denied
+        if (!newVideoOffState && hasCameraPermission === false) { 
              toast({variant: "destructive", title:"Camera Permission Denied", description: "Please enable camera permission in browser settings."});
         }
     } else if (!newVideoOffState) { // No local stream, and trying to turn video ON
-        const stream = await startCameraStream(); // This will try to get/create stream and set hasCameraPermission
+        const stream = await startCameraStream(); 
         if(stream){
+            setIsVideoOff(false); // Successfully started and set to ON
             toast({ title: "Camera On" });
         } else {
-            setIsVideoOff(true); // Failed to start camera, so it's effectively off
-            // startCameraStream will show a toast if it fails due to permission
+            setIsVideoOff(true); 
         }
-    } else { // Turning video off, and no stream (should not happen often)
+    } else { // Turning video off, and no stream (or already off)
+         setIsVideoOff(true);
          toast({ title: "Camera Off" });
     }
 };
@@ -537,25 +546,23 @@ const toggleVideo = async () => {
 
 const toggleShareScreen = async () => {
     if (!isScreenShared) { 
-        const stream = await startScreenShareStream(); // This sets isScreenShared to true on success
+        const stream = await startScreenShareStream(); 
         if (stream) {
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-             // Screen share implies video is 'on' (from screen). Camera video track will be disabled by useEffect.
-            setIsVideoOff(false);
+            setIsVideoOff(false); // Screen share implies video is 'on'
+            if (localStreamRef.current) { // Explicitly disable camera video track if it exists
+                localStreamRef.current.getVideoTracks().forEach(t => t.enabled = false);
+            }
         }
-        // If stream is null, startScreenShareStream already showed a toast.
-        // The useEffect will manage reverting to camera if necessary.
     } else { 
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
-        setIsScreenShared(false); // This triggers useEffect to switch back to camera
+        setIsScreenShared(false); 
         toast({ title: "Screen Sharing Stopped" });
-        // useEffect will handle restarting camera based on !isVideoOff state.
-        // If camera was previously off and user wants it on, they might need to click video toggle again.
-        // Or, ensure camera comes back on if !isVideoOff
-        if (localStreamRef.current && !isVideoOff) {
-            localStreamRef.current.getVideoTracks().forEach(t => t.enabled = true);
-        } else if (!localStreamRef.current && !isVideoOff) {
+        // Revert to camera state based on isVideoOff
+        if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach(t => t.enabled = !isVideoOff);
+        } else if (!isVideoOff) { // If no local stream but video should be on
             await startCameraStream();
         }
     }
@@ -722,6 +729,42 @@ const toggleShareScreen = async () => {
     });
   };
 
+  const toggleFullScreen = useCallback(() => {
+    if (!mainContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      mainContainerRef.current.requestFullscreen().then(() => {
+        setIsFullScreen(true);
+        // Ensure custom cursor remains active, browser might try to show default
+        document.documentElement.style.cursor = 'none';
+      }).catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        toast({variant: "destructive", title:"Fullscreen Error", description: "Could not enter fullscreen mode."});
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          setIsFullScreen(false);
+          document.documentElement.style.cursor = ''; // Revert to default/managed cursor behavior
+        });
+      }
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+      if (document.fullscreenElement) {
+        document.documentElement.style.cursor = 'none';
+      } else {
+        document.documentElement.style.cursor = '';
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan selection:bg-primary/30 selection:text-primary-foreground">
@@ -848,7 +891,7 @@ const toggleShareScreen = async () => {
 
   return (
     <TooltipProvider delayDuration={150}>
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground">
+    <div ref={mainContainerRef} className={cn("flex flex-col min-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground", isFullScreen ? "fixed inset-0 z-[10000]" : "relative")}>
         <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20 shrink-0">
           <div className="group flex items-center gap-2.5 animate-slide-in-left-smooth">
             <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg animate-shine">
@@ -902,6 +945,14 @@ const toggleShareScreen = async () => {
               </div>
           </div>
           <div className="flex items-center gap-2 animate-slide-in-right-smooth">
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={toggleFullScreen} className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md">
+                        {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</p></TooltipContent>
+            </Tooltip>
               <DropdownMenu>
                   <Tooltip>
                       <TooltipTrigger asChild>
@@ -930,17 +981,20 @@ const toggleShareScreen = async () => {
           </div>
         </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-[1fr_minmax(320px,0.7fr)] lg:grid-cols-[1fr_minmax(350px,0.5fr)] xl:grid-cols-[1fr_minmax(400px,0.4fr)] gap-3.5 p-3.5 flex-1 overflow-hidden bg-background/80">
+      <main className={cn("grid grid-cols-1 gap-3.5 p-3.5 flex-1 bg-background/80", 
+                       isFullScreen ? "md:grid-cols-[1fr_350px]" : "md:grid-cols-[2fr_1fr] lg:grid-cols-[3fr_1fr] xl:grid-cols-[3fr_1fr]"
+                       )}>
         
-        {/* Main Video Area (Peer) */}
-        <div className="relative col-span-1 md:col-span-1 flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up overflow-hidden">
+        <div className={cn("relative col-span-1 flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up overflow-hidden", 
+                        isFullScreen ? "md:row-span-2" : "min-h-[300px] md:min-h-[400px]"
+                        )}>
             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
               <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
                 <Users className="w-4.5 h-4.5" /> Peer
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden"> {/* Added relative and overflow-hidden */}
-               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
+            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl aspect-video"></video>
                {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
                     <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
@@ -952,8 +1006,10 @@ const toggleShareScreen = async () => {
                )}
             </CardContent>
 
-             {/* Local Video Overlay */}
-            <div className="absolute bottom-4 right-4 z-20 w-1/3 max-w-[200px] sm:max-w-[240px] md:max-w-[280px] animate-slide-in-right-smooth delay-200">
+            <div className={cn("absolute z-20 animate-slide-in-right-smooth delay-200",
+                            isFullScreen ? "bottom-4 right-4 w-1/4 max-w-[220px] sm:max-w-[260px] md:max-w-[300px]" 
+                                         : "bottom-4 right-4 w-1/3 max-w-[200px] sm:max-w-[240px] md:max-w-[280px]"
+            )}>
                 <Card className="overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative">
                     <CardHeader className="p-2 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
                         <CardTitle className="text-xs sm:text-sm font-semibold text-primary flex items-center gap-1 sm:gap-1.5">
@@ -966,8 +1022,8 @@ const toggleShareScreen = async () => {
                             {!isVideoOff && !isScreenShared && <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative aspect-video mt-[33px] sm:mt-[37px]"> {/* Adjusted mt for smaller header */}
-                        <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
+                    <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative aspect-video mt-[33px] sm:mt-[37px]"> 
+                        <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl aspect-video", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
                         
                         {hasCameraPermission === null && !isScreenShared && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
@@ -1000,8 +1056,9 @@ const toggleShareScreen = async () => {
             </div>
         </div>
 
-        {/* Sidebar / Chat Panel */}
-        <Card className="col-span-1 md:col-span-1 flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-300 overflow-hidden max-h-full">
+        <Card className={cn("col-span-1 flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-300 overflow-hidden",
+                         isFullScreen ? "max-h-full md:row-span-2" : "max-h-[calc(100vh-150px)] md:max-h-full" // Adjust max height for chat in non-fullscreen
+                        )}>
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
                 <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
@@ -1281,7 +1338,6 @@ const toggleShareScreen = async () => {
                              control.active ? "secondary" : "outline"}
                     size={control.main ? "lg" : "default"}
                     onClick={control.action}
-                    // Disable video button if screensharing AND video is off AND no camera permission (edge case, but good to cover)
                     disabled={(control.id === 'video' && isScreenShared && isVideoOff && hasCameraPermission === false)}
                     className={cn(
                       "rounded-full p-0 aspect-square",
@@ -1307,5 +1363,3 @@ const toggleShareScreen = async () => {
     </TooltipProvider>
   );
 }
-
-
