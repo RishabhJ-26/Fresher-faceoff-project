@@ -17,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="en" suppressHydrationWarning className="h-full">
+      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground`}>
         <Providers>
           {children}
           <Toaster />
@@ -27,5 +27,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

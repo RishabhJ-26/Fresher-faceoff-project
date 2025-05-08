@@ -4,105 +4,109 @@
 
 @layer base {
   :root {
-    /* Enhanced Theme: Modern & Vibrant */
-    /* Primary: Kept Calm Blue, slightly brightened for vibrancy */
-    /* Secondary: Adjusted Light Gray for a cleaner feel */
-    /* Accent: Kept Teal, ensuring good contrast */
-
-    --background: 200 20% 98%; /* Brighter Light Gray for a very clean background */
-    --foreground: 210 15% 15%; /* Deep Dark Gray for crisp text */
+    /* Modern Dark Theme */
+    --background: 220 20% 10%; /* Deep, dark desaturated blue */
+    --foreground: 210 40% 95%; /* Very light cool gray for text */
     
-    --foreground-rgb: 34, 40, 44; /* RGB for deep dark gray */
+    --foreground-rgb: 237, 242, 247; /* RGB for very light cool gray */
 
-    --card: 0 0% 100%; /* Pure White for card backgrounds */
-    --card-foreground: 210 15% 12%; /* Very dark gray for card text */
+    --card: 220 20% 15%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 210 40% 92%; /* Consistent light text for cards */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 15% 12%;
+    --popover: 220 20% 13%; /* Darker popover for depth */
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 207 70% 55%; /* Slightly brighter Calm Blue */
-    --primary-foreground: 0 0% 100%; 
+    --primary: 200 80% 60%; /* Vibrant Cyan/Teal */
+    --primary-foreground: 220 20% 5%; /* Dark text for high contrast on primary */
 
-    --secondary: 200 30% 95%; /* Cleaner, lighter gray for secondary elements */
-    --secondary-foreground: 210 15% 25%; 
+    --secondary: 220 15% 25%; /* Muted dark blue for secondary elements */
+    --secondary-foreground: 210 30% 85%; 
 
-    --muted: 200 25% 90%; /* Softer Muted gray */
-    --muted-foreground: 210 10% 35%; 
+    --muted: 220 15% 20%; /* Even more muted for subtle backgrounds */
+    --muted-foreground: 210 20% 65%; 
 
-    --accent: 168 78% 45%; /* Vibrant Teal */
-    --accent-foreground: 0 0% 100%; 
+    --accent: 260 80% 70%; /* Vibrant Purple as accent */
+    --accent-foreground: 210 40% 98%; 
 
-    --destructive: 0 75% 58%; /* Stronger destructive red */
+    --destructive: 0 70% 55%; /* Classic destructive red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 20% 88%; /* Softer gray for borders */
-    --input: 0 0% 100%; /* White input background */
-    --ring: 207 70% 58%; /* Primary color for focus rings, slightly brighter */
+    --border: 220 20% 25%; /* Subtle border color */
+    --input: 220 20% 18%; /* Dark input background */
+    --ring: 200 80% 65%; /* Primary color for focus rings, slightly brighter */
 
-    --radius: 0.9rem; /* Slightly more rounded corners */
+    --radius: 0.75rem; /* Modern, slightly rounded corners */
 
     --chart-1: hsl(var(--primary));
     --chart-2: hsl(var(--accent));
-    --chart-3: hsl(207 60% 70%);
-    --chart-4: hsl(168 65% 60%);
-    --chart-5: hsl(207 50% 80%);
+    --chart-3: hsl(200 70% 70%);
+    --chart-4: hsl(260 70% 75%);
+    --chart-5: hsl(200 60% 80%);
 
-    --sidebar-background: 200 20% 97%;
-    --sidebar-foreground: 210 15% 15%;
+    --sidebar-background: 220 20% 9%; /* Very dark sidebar */
+    --sidebar-foreground: 210 40% 90%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
     --sidebar-accent-foreground: hsl(var(--accent-foreground));
-    --sidebar-border: 200 20% 90%;
+    --sidebar-border: 220 20% 20%;
     --sidebar-ring: hsl(var(--ring));
 
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   }
 
   .dark {
-    --background: 210 12% 10%; /* Darker background */
-    --foreground: 200 18% 94%;
-    --foreground-rgb: 230, 235, 237; 
+    /* Dark theme is default, but if a specific .dark class is needed, it can mirror :root or have slight variations */
+    --background: 220 20% 10%;
+    --foreground: 210 40% 95%;
+    --foreground-rgb: 237, 242, 247; 
 
-    --card: 210 10% 15%; /* Darker card */
-    --card-foreground: 200 18% 94%;
+    --card: 220 20% 15%;
+    --card-foreground: 210 40% 92%;
 
-    --popover: 210 10% 15%;
-    --popover-foreground: 200 18% 94%;
+    --popover: 220 20% 13%;
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 207 72% 62%; /* Brighter blue for dark mode */
-    --primary-foreground: 0 0% 100%;
+    --primary: 200 80% 60%;
+    --primary-foreground: 220 20% 5%;
 
-    --secondary: 210 9% 20%;
-    --secondary-foreground: 200 18% 90%;
+    --secondary: 220 15% 25%;
+    --secondary-foreground: 210 30% 85%;
 
-    --muted: 210 9% 23%;
-    --muted-foreground: 200 12% 68%;
+    --muted: 220 15% 20%;
+    --muted-foreground: 210 20% 65%;
 
-    --accent: 168 72% 52%; /* Brighter teal for dark mode */
-    --accent-foreground: 0 0% 100%;
+    --accent: 260 80% 70%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 12% 26%;
-    --input: 210 12% 18%; /* Darker input for better contrast */
-    --ring: 168 72% 55%; /* Accent color for focus rings in dark mode for more pop */
+    --border: 220 20% 25%;
+    --input: 220 20% 18%;
+    --ring: 200 80% 65%;
 
     --chart-1: hsl(var(--primary));
     --chart-2: hsl(var(--accent));
-    --chart-3: hsl(207 60% 75%);
-    --chart-4: hsl(168 60% 65%);
-    --chart-5: hsl(207 50% 85%);
+    --chart-3: hsl(200 70% 70%);
+    --chart-4: hsl(260 70% 75%);
+    --chart-5: hsl(200 60% 80%);
 
-    --sidebar-background: 210 12% 8%;
-    --sidebar-foreground: 200 18% 94%;
+    --sidebar-background: 220 20% 9%;
+    --sidebar-foreground: 210 40% 90%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
     --sidebar-accent-foreground: hsl(var(--accent-foreground));
-    --sidebar-border: 210 12% 23%;
+    --sidebar-border: 220 20% 20%;
     --sidebar-ring: hsl(var(--ring));
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   * {
@@ -119,56 +123,57 @@
 }
 
 @layer utilities {
+  /* Enhanced Shadows for Dark UI */
   .shadow-soft {
-    box-shadow: 0 3px 10px -2px hsla(var(--foreground-rgb), 0.06), 0 2px 6px -2px hsla(var(--foreground-rgb), 0.04);
+    box-shadow: 0 3px 10px -2px hsla(var(--foreground-rgb), 0.03), 0 2px 6px -2px hsla(var(--foreground-rgb), 0.02);
   }
   .shadow-strong {
-    box-shadow: 0 8px 20px -5px hsla(var(--foreground-rgb), 0.08), 0 5px 10px -6px hsla(var(--foreground-rgb), 0.06);
+    box-shadow: 0 8px 20px -5px hsla(var(--foreground-rgb), 0.05), 0 5px 10px -6px hsla(var(--foreground-rgb), 0.03);
   }
   .shadow-t-strong {
-    box-shadow: 0 -8px 20px -5px hsla(var(--foreground-rgb), 0.08), 0 -5px 10px -6px hsla(var(--foreground-rgb), 0.06);
+    box-shadow: 0 -8px 20px -5px hsla(var(--foreground-rgb), 0.05), 0 -5px 10px -6px hsla(var(--foreground-rgb), 0.03);
   }
   .shadow-inner-soft {
-    box-shadow: inset 0 2px 4px hsla(var(--foreground-rgb), 0.05);
+    box-shadow: inset 0 2px 4px hsla(var(--background), 0.5), inset 0 1px 2px hsla(var(--foreground-rgb), 0.03);
   }
   .shadow-depth-1 { 
-    box-shadow: 0 2px 4px hsla(var(--foreground-rgb), 0.05), 0 1px 2px hsla(var(--foreground-rgb), 0.03);
+    box-shadow: 0 2px 4px hsla(var(--foreground-rgb), 0.03), 0 1px 2px hsla(var(--foreground-rgb), 0.02);
   }
   .shadow-depth-2 { 
-    box-shadow: 0 5px 10px hsla(var(--foreground-rgb), 0.07), 0 3px 6px hsla(var(--foreground-rgb), 0.05);
+    box-shadow: 0 5px 10px hsla(var(--foreground-rgb), 0.04), 0 3px 6px hsla(var(--foreground-rgb), 0.03);
   }
   .shadow-depth-3 { 
-    box-shadow: 0 12px 25px hsla(var(--foreground-rgb), 0.09), 0 8px 10px hsla(var(--foreground-rgb), 0.06);
+    box-shadow: 0 12px 25px hsla(var(--foreground-rgb), 0.06), 0 8px 10px hsla(var(--foreground-rgb), 0.04);
   }
 
   /* Enhanced Animation utilities */
   .animate-background-pan {
     background-size: 400% 400%;
-    animation: background-pan-animation 20s ease infinite;
+    animation: background-pan-animation 25s ease infinite;
   }
   .animate-fade-in-up {
-    animation: fade-in-up 0.6s cubic-bezier(0.390, 0.575, 0.565, 1.000) forwards;
+    animation: fade-in-up 0.7s cubic-bezier(0.390, 0.575, 0.565, 1.000) forwards;
   }
   .animate-fade-in-down {
-    animation: fade-in-down 0.6s cubic-bezier(0.390, 0.575, 0.565, 1.000) forwards;
+    animation: fade-in-down 0.7s cubic-bezier(0.390, 0.575, 0.565, 1.000) forwards;
   }
   .animate-slide-in-bottom-fast {
-    animation: slide-in-bottom-fast 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: slide-in-bottom-fast 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   }
   .animate-slide-in-left-smooth {
-    animation: slide-in-left-smooth 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    animation: slide-in-left-smooth 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
   .animate-slide-in-right-smooth {
-    animation: slide-in-right-smooth 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    animation: slide-in-right-smooth 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
   .animate-pulse-gentle {
-    animation: pulse-gentle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-gentle 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
   .animate-pop-in {
-    animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275) forwards;
+    animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.320, 1.275) forwards;
   }
    .animate-subtle-lift {
-    animation: subtle-lift 0.3s ease-out forwards;
+    animation: subtle-lift 0.35s ease-out forwards;
   }
   .animate-press {
     animation: press 0.2s cubic-bezier(0.390, 0.575, 0.565, 1.000) forwards;
@@ -187,10 +192,11 @@
 
   /* Modern Gradient background */
   .bg-hero-gradient {
-    background-image: linear-gradient(145deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--accent) / 0.05) 50%, hsl(var(--background)) 100%);
+    /* A subtle gradient that works with the dark theme */
+    background-image: linear-gradient(145deg, hsl(var(--primary) / 0.05) 0%, hsl(var(--accent) / 0.03) 50%, hsl(var(--background)) 100%);
   }
    .bg-soft-gradient {
-    background-image: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.7) 50%, hsl(var(--background)) 100%);
+    background-image: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.5) 50%, hsl(var(--background)) 100%);
   }
 }
 
@@ -201,47 +207,47 @@
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  from { opacity: 0; transform: translateY(25px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes fade-in-down {
-  from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-25px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slide-in-bottom-fast {
-  from { opacity: 0; transform: translateY(30px); }
+  from { opacity: 0; transform: translateY(35px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slide-in-left-smooth {
-  from { opacity: 0; transform: translateX(-30px); }
+  from { opacity: 0; transform: translateX(-35px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slide-in-right-smooth {
-  from { opacity: 0; transform: translateX(30px); }
+  from { opacity: 0; transform: translateX(35px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes pulse-gentle {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(1.015); }
+  50% { opacity: 0.95; transform: scale(1.01); }
 }
 
 @keyframes pop-in {
-  0% { transform: scale(0.85); opacity: 0; }
+  0% { transform: scale(0.9); opacity: 0; }
   80% { transform: scale(1.02); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes subtle-lift {
-  from { transform: translateY(0); box-shadow: 0 1px 2px hsla(var(--foreground-rgb), 0.03); }
-  to { transform: translateY(-2px); box-shadow: 0 3px 6px hsla(var(--foreground-rgb), 0.05); }
+  from { transform: translateY(0); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); }
+  to { transform: translateY(-3px); box-shadow: 0 4px 8px hsla(var(--foreground-rgb), 0.06), 0 2px 4px hsla(var(--foreground-rgb),0.04); }
 }
 
 @keyframes press {
   from { transform: scale(1); }
-  to { transform: scale(0.97); }
+  to { transform: scale(0.96); }
 }
