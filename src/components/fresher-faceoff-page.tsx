@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -20,7 +21,6 @@ import {
   Mic,
   MessageSquare,
   Send,
-  UserPlus,
   LogOut,
   MicOff,
   VideoOff,
@@ -563,7 +563,7 @@ const toggleShareScreen = async () => {
   };
 
   const toggleFullscreen = () => {
-    const element = document.documentElement; // Target the whole page for fullscreen
+    const element = document.documentElement; 
 
     if (!document.fullscreenElement) {
       element.requestFullscreen().catch(err => {
@@ -876,11 +876,13 @@ const toggleShareScreen = async () => {
     <TooltipProvider delayDuration={150}>
     <div className={cn(
       "flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground",
-       isFullscreen && "bg-black fixed inset-0 z-[999]" // Fullscreen takes over entire viewport
+       isFullscreen && "fixed inset-0 z-[999]" 
       )}>
-      {/* Header (only shown if not fullscreen) */}
-      {!isFullscreen && (
-        <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20">
+      {/* Header (always shown, adapted for fullscreen) */}
+        <header className={cn(
+          "bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20",
+          isFullscreen && "fixed top-0 left-0 right-0"
+          )}>
           <div className={cn("group flex items-center gap-2.5 animate-slide-in-left-smooth")}>
             <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg animate-shine">
               <Users className="h-7 w-7 text-primary-foreground"/>
@@ -970,22 +972,16 @@ const toggleShareScreen = async () => {
               </Button>
           </div>
         </header>
-      )}
 
-      {/* Main Content Area: Videos and Chat */}
+      {/* Main Content Area: Videos and Chat/Tabs Panel */}
       <main className={cn(
-        "flex-1 flex gap-3.5 p-3.5 overflow-hidden", 
-        isFullscreen ? "flex-row items-stretch justify-center h-full bg-black" : "flex-col md:flex-row bg-background/80"
+        "flex flex-1 gap-3.5 p-3.5 overflow-hidden", 
+        isFullscreen ? "pt-[70px] pb-[86px]" : "pt-0 pb-0", // Adjust padding for fixed header/footer in fullscreen
+        "bg-background/80" // Apply background to main area for consistent look
       )}>
-        {/* Videos Container */}
-        <div className={cn(
-          "flex flex-col gap-3.5 animate-fade-in-up delay-150 overflow-hidden",
-          isFullscreen ? "w-2/3 h-full p-4" : "md:w-2/3 lg:w-3/4 xl:w-4/5 order-1 md:order-1"
-        )}>
-           {/* Remote Video (Peer) */}
-           <Card className={cn(
-             "overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1"
-           )}>
+        {/* Peer Video (Left Column) */}
+        <div className="flex-1 flex flex-col gap-3.5 animate-fade-in-up delay-100 overflow-hidden">
+           <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
               <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
                 <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
                   <Users className="w-4.5 h-4.5" /> Peer
@@ -1004,11 +1000,11 @@ const toggleShareScreen = async () => {
                  )}
               </CardContent>
             </Card>
+        </div>
 
-           {/* Local Video (User) */}
-           <Card className={cn(
-              "overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative flex-1 max-h-[40%]"
-           )}>
+        {/* User Video (Middle Column) */}
+        <div className="flex-1 flex flex-col gap-3.5 animate-fade-in-up delay-150 overflow-hidden">
+           <Card className="overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative flex-1">
              <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
               <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
                 <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
@@ -1044,11 +1040,10 @@ const toggleShareScreen = async () => {
            </Card>
         </div>
 
-
-        {/* Chat/Tabs Panel */}
+        {/* Chat/Tabs Panel (Right Column) */}
         <Card className={cn(
           "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250",
-          isFullscreen ? "w-1/3 h-full max-h-full" : "flex-1 md:w-1/3 lg:w-1/4 xl:w-1/5 max-h-[calc(100vh-100px)] md:max-h-full order-2 md:order-2"
+          "flex-1 max-h-full overflow-hidden" // Ensure it takes available space and handles overflow
         )}>
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
@@ -1314,9 +1309,11 @@ const toggleShareScreen = async () => {
         </Card>
       </main>
 
-      {/* Footer: Call Controls (only shown if not fullscreen) */}
-      {!isFullscreen && (
-          <footer className="bg-card/95 backdrop-blur-lg p-3 shadow-t-strong flex justify-center items-center space-x-2.5 sm:space-x-3.5 border-t border-border/50 animate-fade-in-up delay-350">
+      {/* Footer: Call Controls (always shown, adapted for fullscreen) */}
+      <footer className={cn(
+        "bg-card/95 backdrop-blur-lg p-3 shadow-t-strong flex justify-center items-center space-x-2.5 sm:space-x-3.5 border-t border-border/50 animate-fade-in-up delay-350",
+        isFullscreen && "fixed bottom-0 left-0 right-0"
+        )}>
             {[
               { id: 'mute', Icon: isMuted ? MicOff : Mic, active: isMuted, action: toggleMute, label: isMuted ? "Unmute" : "Mute", destructive: isMuted },
               { id: 'video', Icon: isVideoOff || isScreenShared ? CameraOff : Video, active: isVideoOff, action: toggleVideo, label: isScreenShared ? "Stop Share & Start Video" : (isVideoOff ? "Start Video" : "Stop Video"), destructive: isVideoOff && !isScreenShared },
@@ -1355,8 +1352,8 @@ const toggleShareScreen = async () => {
               </Tooltip>
             ))}
           </footer>
-        )}
     </div>
     </TooltipProvider>
   );
 }
+
