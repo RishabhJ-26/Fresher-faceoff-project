@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Copy,
   Check,
+  Loader2, // Added Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -321,16 +322,18 @@ export function FresherFaceoffPage() {
   if (!isConnected) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4 font-sans animate-background-gradient">
-        <Card className="w-full max-w-md shadow-2xl border-primary/20 rounded-xl animate-fade-in">
-          <CardHeader className="text-center p-6">
+        <Card className="w-full max-w-md shadow-2xl border-primary/20 rounded-xl animate-pop">
+          <CardHeader className="text-center p-6 pt-8">
             <div className="mx-auto mb-6 p-3 bg-primary rounded-full w-fit shadow-lg shadow-primary/30 transform transition-transform hover:scale-110">
-             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground"><path d="M17.5 17.5 22 22"/><path d="M20 11v2a8 8 0 1 1-5.196-7.402"/><path d="M5 17A7 7 0 1 0 5 3a7 7 0 0 0 0 14Z"/><path d="M15 17A7 7 0 1 0 15 3a7 7 0 0 0 0 14Z"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground"><path d="M17.5 17.5 22 22"/><path d="M20 11v2a8 8 0 1 1-5.196-7.402"/><path d="M5 17A7 7 0 1 0 5 3a7 7 0 0 0 0 14Z"/><path d="M15 17A7 7 0 1 0 15 3a7 7 0 0 0 0 14Z"/></svg>
             </div>
-            <CardTitle className="text-3xl font-bold text-primary tracking-tight">Fresher Faceoff</CardTitle>
-            <CardDescription className="text-md text-muted-foreground pt-1">Connect for a peer-to-peer interview.</CardDescription>
+            <div className="animate-fade-in delay-100">
+              <CardTitle className="text-3xl font-bold text-primary tracking-tight">Fresher Faceoff</CardTitle>
+              <CardDescription className="text-md text-muted-foreground pt-1">Connect for a peer-to-peer interview.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
-            <div className="relative">
+            <div className="relative animate-fade-in delay-200">
               <Input
                 type="text"
                 placeholder="Enter or Generate Interview ID"
@@ -345,28 +348,37 @@ export function FresherFaceoffPage() {
                 </Button>
               )}
             </div>
-            <Button onClick={handleConnect} className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95" disabled={isConnecting}>
-              {isConnecting ? "Connecting..." : (
-                <>
-                  <Phone className="mr-2 h-5 w-5" /> Join Interview
-                </>
-              )}
-            </Button>
-             <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or
-                </span>
-              </div>
+            <div className="animate-fade-in delay-300">
+              <Button onClick={handleConnect} className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 transform hover:scale-[1.03]" disabled={isConnecting}>
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Phone className="mr-2 h-5 w-5" /> Join Interview
+                  </>
+                )}
+              </Button>
             </div>
-            <Button onClick={handleCreateInterview} variant="outline" className="w-full h-12 text-lg border-primary/50 hover:bg-primary/5 hover:text-primary rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
-              <UserPlus className="mr-2 h-5 w-5" /> Create New Interview
-            </Button>
+            <div className="animate-fade-in delay-400">
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-sm uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or
+                  </span>
+                </div>
+              </div>
+              <Button onClick={handleCreateInterview} variant="outline" className="w-full h-12 text-lg border-primary/50 hover:bg-primary/5 hover:text-primary rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 transform hover:scale-[1.03]">
+                <UserPlus className="mr-2 h-5 w-5" /> Create New Interview
+              </Button>
+            </div>
           </CardContent>
-          <CardFooter className="text-center text-xs text-muted-foreground p-6">
+          <CardFooter className="text-center text-xs text-muted-foreground p-6 animate-fade-in delay-500">
             <p>Ensure a stable internet connection and allow camera/microphone access when prompted.</p>
           </CardFooter>
         </Card>
@@ -376,7 +388,7 @@ export function FresherFaceoffPage() {
 
   return (
     <div className="flex flex-col h-screen bg-secondary overflow-hidden antialiased font-sans">
-      <header className="bg-background p-3 shadow-soft flex justify-between items-center border-b">
+      <header className="bg-background p-3 shadow-md flex justify-between items-center border-b">
         <div className="flex items-center gap-2">
          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform transition-transform hover:rotate-12"><path d="M17.5 17.5 22 22"/><path d="M20 11v2a8 8 0 1 1-5.196-7.402"/><path d="M5 17A7 7 0 1 0 5 3a7 7 0 0 0 0 14Z"/><path d="M15 17A7 7 0 1 0 15 3a7 7 0 0 0 0 14Z"/></svg>
           <h1 className="text-xl font-semibold text-primary tracking-tight">Fresher Faceoff</h1>
@@ -387,7 +399,7 @@ export function FresherFaceoffPage() {
                 {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
         </div>
-        <Button onClick={handleDisconnect} variant="destructive" size="sm" className="font-medium rounded-md shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
+        <Button onClick={handleDisconnect} variant="destructive" size="sm" className="font-medium rounded-md shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 transform hover:scale-[1.03]">
           <LogOut className="mr-1.5 h-4 w-4" /> Leave
         </Button>
       </header>
@@ -395,13 +407,13 @@ export function FresherFaceoffPage() {
       <main className="flex-1 flex flex-col lg:flex-row gap-3 p-3 overflow-hidden">
         {/* Video Area */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Card className="overflow-hidden shadow-strong rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl">
+          <Card className="overflow-hidden shadow-strong rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
             <CardHeader className="p-2 bg-card/80 backdrop-blur-sm">
               <CardTitle className="text-xs text-center font-medium text-muted-foreground">{isScreenShared ? "Your Screen Share" : "Your Video"}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 aspect-video bg-muted/30 flex items-center justify-center relative">
               <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-contain transition-opacity duration-300 ${isVideoOff && !isScreenShared ? 'opacity-0' : 'opacity-100'}`}></video>
-              {(isVideoOff && !isScreenShared) && <Avatar className="w-24 h-24 md:w-32 md:h-32 absolute"><AvatarFallback className="text-3xl md:text-4xl bg-primary/20 text-primary rounded-full">YOU</AvatarFallback></Avatar>}
+              {(isVideoOff && !isScreenShared) && <Avatar className={cn("w-24 h-24 md:w-32 md:h-32 absolute", !hasCameraPermission && "animate-pulse-subtle")}><AvatarFallback className="text-3xl md:text-4xl bg-primary/20 text-primary rounded-full">YOU</AvatarFallback></Avatar>}
                { !hasCameraPermission && !isScreenShared && (
                  <Alert variant="destructive" className="absolute bottom-2 left-2 right-2 md:left-4 md:right-auto md:w-auto max-w-xs text-xs p-2 shadow-lg rounded-md animate-fade-in">
                   <AlertTriangle className="h-3 w-3" />
@@ -413,7 +425,7 @@ export function FresherFaceoffPage() {
                )}
             </CardContent>
           </Card>
-          <Card className="overflow-hidden shadow-strong rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl">
+          <Card className="overflow-hidden shadow-strong rounded-xl border-border/30 flex flex-col transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
              <CardHeader className="p-2 bg-card/80 backdrop-blur-sm">
               <CardTitle className="text-xs text-center font-medium text-muted-foreground">Peer&apos;s Video</CardTitle>
             </CardHeader>
@@ -432,7 +444,7 @@ export function FresherFaceoffPage() {
             </CardTitle>
           </CardHeader>
           <ScrollArea className="flex-1 p-3 bg-background/30" viewportRef={chatScrollAreaRef}>
-            <div className="space-y-3.5">
+            <div className="space-y-2.5">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -442,10 +454,10 @@ export function FresherFaceoffPage() {
                   )}
                 >
                   <div
-                    className={`max-w-[85%] p-2.5 rounded-lg shadow-soft ${
+                    className={`max-w-[85%] p-2.5 rounded-xl shadow-soft ${
                       msg.sender === "me"
-                        ? "bg-primary text-primary-foreground rounded-br-xl"
-                        : "bg-card text-foreground rounded-bl-xl border border-border/50" 
+                        ? "bg-primary text-primary-foreground rounded-br-none"
+                        : "bg-card text-foreground rounded-bl-none border border-border/50" 
                     }`}
                   >
                     <p className="text-sm break-words leading-snug">{msg.text}</p>
@@ -473,7 +485,7 @@ export function FresherFaceoffPage() {
                 className="flex-1 h-10 focus-visible:ring-accent rounded-lg shadow-inner"
                 aria-label="New message input"
               />
-              <Button type="submit" size="icon" onClick={handleSendMessage} className="bg-accent hover:bg-accent/90 rounded-full w-10 h-10 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95" aria-label="Send message">
+              <Button type="submit" size="icon" onClick={handleSendMessage} className="bg-accent hover:bg-accent/90 rounded-full w-10 h-10 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 transform hover:scale-[1.05]" aria-label="Send message">
                 <Send className="h-5 w-5 text-accent-foreground" />
               </Button>
             </div>
@@ -486,8 +498,8 @@ export function FresherFaceoffPage() {
           variant={isMuted ? "destructive" : "outline"} 
           size="icon" onClick={toggleMute} 
           className={cn(
-            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2", 
-            isMuted ? "focus:ring-destructive/50" : "focus:ring-primary/50"
+            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.05]", 
+            isMuted ? "focus:ring-destructive/50 hover:bg-destructive/90" : "focus:ring-primary/50 hover:bg-secondary"
           )} 
           aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
         >
@@ -498,9 +510,9 @@ export function FresherFaceoffPage() {
           size="icon" 
           onClick={toggleVideo} 
           className={cn(
-            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2",
-            isVideoOff ? "focus:ring-destructive/50" : "focus:ring-primary/50",
-            isScreenShared && "opacity-50 cursor-not-allowed"
+            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.05]",
+            isVideoOff ? "focus:ring-destructive/50 hover:bg-destructive/90" : "focus:ring-primary/50 hover:bg-secondary",
+            isScreenShared && "opacity-50 cursor-not-allowed hover:scale-100"
             )} 
           disabled={isScreenShared} 
           aria-label={isVideoOff ? "Turn camera on" : "Turn camera off"}
@@ -512,8 +524,8 @@ export function FresherFaceoffPage() {
           size="icon" 
           onClick={toggleShareScreen} 
           className={cn(
-            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2",
-            isScreenShared ? "bg-accent text-accent-foreground hover:bg-accent/90 focus:ring-accent/50" : "focus:ring-primary/50"
+            "rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.05]",
+            isScreenShared ? "bg-accent text-accent-foreground hover:bg-accent/90 focus:ring-accent/50" : "focus:ring-primary/50 hover:bg-secondary"
           )}
           aria-label={isScreenShared ? "Stop screen sharing" : "Start screen sharing"}
         >
@@ -523,7 +535,7 @@ export function FresherFaceoffPage() {
           variant="destructive" 
           size="lg" 
           onClick={handleDisconnect} 
-          className="rounded-full w-16 h-12 sm:w-20 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 focus:ring-destructive/50 px-3 sm:px-4" 
+          className="rounded-full w-16 h-12 sm:w-20 sm:h-14 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-offset-2 focus:ring-destructive/50 px-3 sm:px-4 transform hover:scale-[1.05] hover:bg-destructive/90" 
           aria-label="Disconnect call"
         >
           <PhoneOff className="h-6 w-6 sm:h-7 sm:w-7" />
