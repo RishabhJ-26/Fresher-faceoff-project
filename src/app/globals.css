@@ -59,31 +59,25 @@
     /* Dark theme is default, variables are defined in :root */
   }
 
-  /* Ensure cursor is visible by default for all elements */
-  * {
-    cursor: auto !important; 
-  }
-
   html, body {
     height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
-    cursor: none !important; /* Hide default cursor specifically for html/body */
+    cursor: none !important; /* Hide default cursor for html/body to allow custom cursor to take over */
   }
   
-  /* Ensure cursor is visible in fullscreen if default behavior is desired, overridden by custom cursor if present */
-  :fullscreen, ::backdrop {
-    cursor: auto !important;
-  }
-  
+  /* When custom cursor is active, default cursor should remain hidden even in fullscreen */
+  /* If a custom cursor component manages visibility, this specific rule for fullscreen might not be needed or could conflict */
+  /* For custom cursor, ensure its visibility logic handles fullscreen correctly. */
+  /* This rule below ensures if a custom cursor ISN'T perfectly managing fullscreen, the system cursor won't reappear */
   html:fullscreen, body:fullscreen {
-     cursor: none !important; /* Hide default cursor for html/body specifically in fullscreen */
+     cursor: none !important; 
   }
-
-
+  
+  /* Interactive elements should also hide default cursor if custom cursor is used */
   button, a, input, textarea, select, [role="button"], [data-interactive="true"] {
-    cursor: none !important; /* Ensure interactive elements also hide default cursor */
+    cursor: none !important; 
   }
 
 
@@ -184,10 +178,6 @@
     );
     transform: skewX(-25deg);
     animation: shine-animation 5s infinite linear;
-    /* Opacity and transition are handled by the animation keyframes itself
-       or should not be hover-dependent if the shine is to be always active.
-       The animation keyframes already modulate opacity.
-    */
   }
 
   .delay-100 { animation-delay: 100ms; }
@@ -292,18 +282,18 @@
 @keyframes shine-animation {
   0% {
     transform: translateX(-200%) skewX(-25deg);
-    opacity: 0.3; /* Start with some opacity if shine is always active */
+    opacity: 0.3;
   }
   20% {
-    opacity: 0.7; /* Brighter peak */
+    opacity: 0.7; 
   }
   60% {
     transform: translateX(200%) skewX(-25deg);
-    opacity: 0.3; /* Fade out to base opacity */
+    opacity: 0.3; 
   }
   100% {
     transform: translateX(200%) skewX(-25deg);
-    opacity: 0.3; /* Ensure it's at base opacity at end of loop */
+    opacity: 0.3; 
   }
 }
 

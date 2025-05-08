@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -256,15 +255,19 @@ export function FresherFaceoffPage() {
       if (!isScreenShared) { 
         startCameraStream().then(stream => {
           if (stream && remoteVideoRef.current) {
+            // Simulate peer connection by cloning local stream to remote video element for demo purposes
             const peerStream = new MediaStream();
             stream.getTracks().forEach(track => {
               const clonedTrack = track.clone();
-              if (clonedTrack.kind === 'audio') clonedTrack.enabled = !isMuted; 
+              if (clonedTrack.kind === 'audio') clonedTrack.enabled = !isMuted; // Respect mute state for peer's audio
               peerStream.addTrack(clonedTrack);
             });
             remoteVideoRef.current.srcObject = peerStream;
+            
+            // Fallback for peer video if it doesn't load after a delay (e.g. for actual P2P connection issues)
             setTimeout(() => {
                if(remoteVideoRef.current && (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.getTracks().length === 0)) {
+                  // This mock stream is a placeholder, in a real app you'd handle P2P connection state
                   const mockStream = new MediaStream();
                   const canvas = document.createElement('canvas');
                   canvas.width = 640; 
@@ -282,15 +285,15 @@ export function FresherFaceoffPage() {
                   if(videoTrack) mockStream.addTrack(videoTrack);
                   remoteVideoRef.current.srcObject = mockStream;
                }
-            }, 2000);
+            }, 2000); // Wait 2 seconds before showing placeholder
           } else if (!stream) {
-               setIsVideoOff(true); 
+               setIsVideoOff(true); // If camera failed, ensure video is marked as off
           }
         });
-      } else if (screenStreamRef.current && localVideoRef.current) {
+      } else if (screenStreamRef.current && localVideoRef.current) { // If screen sharing is active
         localVideoRef.current.srcObject = screenStreamRef.current;
       }
-    } else { 
+    } else { // If not connected
       stopStream(localStreamRef.current);
       localStreamRef.current = null;
       stopStream(screenStreamRef.current);
@@ -298,16 +301,18 @@ export function FresherFaceoffPage() {
       if (localVideoRef.current) localVideoRef.current.srcObject = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setIsScreenShared(false);
-      setHasCameraPermission(null);
+      setHasCameraPermission(null); // Reset camera permission state
       setIsVideoOff(false);
     }
 
+    // Cleanup streams on component unmount or when isConnected/isScreenShared changes
     return () => {
       stopStream(localStreamRef.current);
       stopStream(screenStreamRef.current);
     };
-  }, [isConnected, startCameraStream, isMuted, isScreenShared]); 
+  }, [isConnected, startCameraStream, isMuted, isScreenShared]); // Added isMuted and isScreenShared as dependencies
 
+  // Scroll chat to bottom on new message
   useEffect(() => {
     if (chatScrollAreaRef.current) {
       const viewport = chatScrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
@@ -329,9 +334,10 @@ export function FresherFaceoffPage() {
 
     setIsConnecting(true);
 
-    if (hasCameraPermission === null) { 
-        const stream = await startCameraStream(false); 
-        if (!stream) { 
+    // Check camera permission proactively before connecting
+    if (hasCameraPermission === null) { // Only if not already checked/denied
+        const stream = await startCameraStream(false); // Don't show error toast yet
+        if (!stream) { // If camera access fails or is denied
             toast({
                 variant: "destructive",
                 title: "Camera Access Recommended",
@@ -339,7 +345,7 @@ export function FresherFaceoffPage() {
                 duration: 7000,
             });
         }
-    } else if (hasCameraPermission === false) { 
+    } else if (hasCameraPermission === false) { // If already known to be denied
         toast({
             variant: "destructive",
             title: "Camera Access Denied",
@@ -349,6 +355,7 @@ export function FresherFaceoffPage() {
     }
 
 
+    // Simulate connection delay
     setTimeout(() => {
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
 
@@ -373,7 +380,7 @@ export function FresherFaceoffPage() {
       if (interviewId.startsWith("FF-NEW-")) {
           currentId = effectiveId;
           FAKE_ACTIVE_INTERVIEWS.add(currentId);
-          setInterviewId(currentId);
+          setInterviewId(currentId); // Update interviewId to the actual ID
           toast({
             title: "Interview Created & Joined!",
             description: (
@@ -388,7 +395,7 @@ export function FresherFaceoffPage() {
           description: `Joined interview: ${currentId}`,
         });
       }
-      setIsTimerRunning(true); 
+      setIsTimerRunning(true); // Start the interview timer
     }, 1500);
   };
 
@@ -416,17 +423,19 @@ export function FresherFaceoffPage() {
     setMessages([]);
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
     FAKE_ACTIVE_INTERVIEWS.delete(effectiveId);
-    setInterviewId("");
+    setInterviewId(""); // Clear interview ID on disconnect
     toast({ title: "Disconnected", description: "You have left the interview session." });
 
     if (isFullscreen && document.fullscreenElement) {
         document.exitFullscreen?.().catch(err => console.error("Error exiting fullscreen on disconnect:", err));
     }
-    setIsFullscreen(false); 
+    setIsFullscreen(false); // Ensure fullscreen state is reset
+    // Stop and reset interview timer
     setIsTimerRunning(false);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     setTimerSeconds(0);
 
+    // Stop and reset question timer
     setIsQuestionTimerRunning(false);
     if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current);
     setQuestionTimerSeconds(0);
@@ -444,10 +453,11 @@ export function FresherFaceoffPage() {
         text: messageText,
         sender: sender,
         timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined,
+        feedback: sender === "ai" ? null : undefined, // Initialize feedback for AI messages
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
 
+      // Simulate peer response if message is from "me"
       if (sender === "me") {
         setTimeout(() => {
           const peerResponse: Message = {
@@ -458,7 +468,7 @@ export function FresherFaceoffPage() {
           };
           setMessages(prev => [...prev, peerResponse]);
         }, 800);
-        setNewMessage("");
+        setNewMessage(""); // Clear input field
       }
     }
   };
@@ -466,6 +476,7 @@ export function FresherFaceoffPage() {
   const toggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
+    // Apply mute state to local audio tracks (camera and screen share if active)
     if (localStreamRef.current) {
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     }
@@ -476,59 +487,64 @@ export function FresherFaceoffPage() {
   };
 
   const toggleVideo = async () => {
+    // If screen sharing, this button should first stop screen share then toggle video
     if (isScreenShared) { 
-      await toggleShareScreen(); 
+      await toggleShareScreen(); // This will stop screen share and attempt to restart camera
       return;
     }
 
     const newVideoOffState = !isVideoOff;
-    setIsVideoOff(newVideoOffState); 
+    setIsVideoOff(newVideoOffState); // Optimistically update UI
 
-    if (localStreamRef.current) { 
+    if (localStreamRef.current) { // If camera stream exists
         localStreamRef.current.getVideoTracks().forEach(track => {
-          track.enabled = !newVideoOffState; 
+          track.enabled = !newVideoOffState; // Toggle track enabled state
         });
-        if (localVideoRef.current) { 
+        if (localVideoRef.current) { // Ensure video element reflects this
           localVideoRef.current.srcObject = localStreamRef.current;
         }
-    } else if (!newVideoOffState) { 
+    } else if (!newVideoOffState) { // If no stream, and trying to turn video ON
         const stream = await startCameraStream();
-        if(!stream) setIsVideoOff(true); 
+        if(!stream) setIsVideoOff(true); // If starting camera failed, revert UI state
     }
     
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
   };
 
 
+// Toggle Screen Sharing
 const toggleShareScreen = async () => {
-    if (!isScreenShared) { 
+    if (!isScreenShared) { // If not currently sharing, start sharing
+        // Temporarily disable camera video tracks if active
         if (localStreamRef.current) {
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
         const stream = await startScreenShareStream();
-        if (stream) { 
+        if (stream) { // Successfully started screen share
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else { 
-           if (localStreamRef.current) { 
-              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
+        } else { // Failed to start screen share, re-enable camera if it was on
+           if (localStreamRef.current) { // If camera stream exists
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Re-enable based on isVideoOff state
               if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-           } else if (!isVideoOff) { 
-             await startCameraStream(false); 
+           } else if (!isVideoOff) { // If no camera stream, but video wasn't off, try to start it
+             await startCameraStream(false); // Start camera without error toast if it fails now
            }
+           // setIsScreenShared(false) is handled by startScreenShareStream on failure
         }
-    } else { 
+    } else { // If currently sharing, stop sharing
         if (screenStreamRef.current) {
-            screenStreamRef.current.getTracks().forEach(track => track.stop());
-            screenStreamRef.current = null; 
+            screenStreamRef.current.getTracks().forEach(track => track.stop()); // Stop all tracks of screen stream
+            screenStreamRef.current = null; // Clear reference
         }
-        setIsScreenShared(false); 
+        setIsScreenShared(false); // Update state
 
-        if (localStreamRef.current) { 
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
+        // Re-enable camera video if it was not explicitly turned off
+        if (localStreamRef.current) { // If camera stream exists
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Re-enable based on isVideoOff state
             if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-        } else if (!isVideoOff) { 
+        } else if (!isVideoOff) { // If no camera stream, but video wasn't off, try to start it
             await startCameraStream(false);
-        } else if (isVideoOff && localVideoRef.current) { 
+        } else if (isVideoOff && localVideoRef.current) { // If video was off, ensure local video element is blank
             localVideoRef.current.srcObject = null;
         }
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
@@ -547,7 +563,7 @@ const toggleShareScreen = async () => {
   };
 
   const toggleFullscreen = () => {
-    const element = document.documentElement; 
+    const element = document.documentElement; // Target the whole page for fullscreen
 
     if (!document.fullscreenElement) {
       element.requestFullscreen().catch(err => {
@@ -564,6 +580,7 @@ const toggleShareScreen = async () => {
     }
   };
 
+  // Listen to fullscreen changes to update state
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -572,6 +589,7 @@ const toggleShareScreen = async () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // AI Question Generation
   const handleGenerateQuestions = async () => {
     if (!interviewCategory) {
       toast({ variant: "destructive", title: "Category Required", description: "Please select an interview category or choose 'Custom Topic'." });
@@ -583,7 +601,7 @@ const toggleShareScreen = async () => {
     }
 
     setIsGeneratingQuestions(true);
-    setGeneratedQuestions([]);
+    setGeneratedQuestions([]); // Clear previous questions
     try {
       const topic = interviewCategory === "Custom Topic" ? customTopic : interviewCategory;
       const result: GenerateInterviewQuestionsOutput = await generateInterviewQuestions({ topic, numQuestions: 5 });
@@ -598,12 +616,13 @@ const toggleShareScreen = async () => {
     } catch (error: any) {
       console.error("Error generating questions:", error);
       toast({ variant: "destructive", title: "Error Generating Questions", description: error.message || "An unexpected error occurred." });
-      setGeneratedQuestions(["Failed to load questions. Please try again."]);
+      setGeneratedQuestions(["Failed to load questions. Please try again."]); // Show error in list
     } finally {
       setIsGeneratingQuestions(false);
     }
   };
 
+  // Interview Timer Logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -633,6 +652,7 @@ const toggleShareScreen = async () => {
     setTimerSeconds(0);
   };
 
+  // Question Timer Logic
   useEffect(() => {
     if (isQuestionTimerRunning) {
       questionTimerIntervalRef.current = setInterval(() => {
@@ -660,11 +680,13 @@ const toggleShareScreen = async () => {
   const handleStopQuestionTimer = () => {
     setIsQuestionTimerRunning(false);
     if (currentQuestionIndex !== null) {
+        // Send AI message about question completion and time
         handleSendMessage(`Finished question ${currentQuestionIndex + 1}. Time taken: ${formatTime(questionTimerSeconds)}`, "ai");
     }
-    setCurrentQuestionIndex(null);
+    setCurrentQuestionIndex(null); // Reset current question
   };
 
+  // Feedback for AI Messages
   const handleMessageFeedback = (messageId: string, feedback: "good" | "bad") => {
     setMessages(prevMessages =>
       prevMessages.map(msg =>
@@ -674,37 +696,40 @@ const toggleShareScreen = async () => {
     toast({ title: "Feedback Submitted", description: `Marked AI response as ${feedback}.` });
   };
 
+  // AI Feedback on Session
   const handleGetAiFeedback = () => {
     if (messages.filter(m => m.sender === "me" || m.sender === "peer").length < 2) {
       toast({ variant: "destructive", title: "Not Enough Interaction", description: "Please have a more substantial conversation before requesting AI feedback." });
       return;
     }
     setShowAiFeedbackProcessing(true);
+    // Simulate AI processing
     setTimeout(() => {
       const feedbackText = `Overall, the interview interaction showed good potential. Key strengths include clear communication and relevant questions. Areas for improvement could be to elaborate more on answers and to ask more follow-up questions to dive deeper into topics. The pacing was generally good. Remember to maintain eye contact and show enthusiasm!`;
       setOverallFeedback(feedbackText);
-      handleSendMessage(feedbackText, "ai");
-      setActiveTab("feedback");
+      handleSendMessage(feedbackText, "ai"); // Send feedback as an AI message
+      setActiveTab("feedback"); // Switch to feedback tab
       setShowAiFeedbackProcessing(false);
       toast({ title: "AI Feedback Generated!", description: "Check the 'Feedback' tab for insights." });
     }, 2500);
   };
 
+  // Share Interview (Web Share API or Copy)
   const handleShareInterview = () => {
     const idToShare = interviewId.replace("FF-NEW-", "FF-");
     if (navigator.share) {
       navigator.share({
         title: 'Join My Fresher Faceoff Interview!',
         text: `Let's practice! Join my Fresher Faceoff interview with ID: ${idToShare}`,
-        url: window.location.href,
+        url: window.location.href, // Share current page URL
       })
       .then(() => toast({ title: "Shared!", description: "Interview details sent."}))
       .catch((error) => {
         console.error('Error sharing:', error);
-        handleCopyInterviewId(); 
+        handleCopyInterviewId(); // Fallback to copy if share fails
         toast({title: "Share Failed, ID Copied", description: "Could not use share. Interview ID copied to clipboard instead."});
       });
-    } else { 
+    } else { // Fallback if Web Share API is not supported
       handleCopyInterviewId();
       toast({title: "Copied for Sharing", description: "Interview ID copied. Please paste it to your peer."});
     }
@@ -716,6 +741,7 @@ const toggleShareScreen = async () => {
   };
 
 
+  // Lobby View (when not connected)
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan selection:bg-primary/30 selection:text-primary-foreground">
@@ -736,6 +762,7 @@ const toggleShareScreen = async () => {
           </CardHeader>
 
           <CardContent className="space-y-6 p-0">
+            {/* AI Question Generation Section */}
             <div className="space-y-3 p-4 border border-border/30 rounded-xl bg-background/60 shadow-sm animate-fade-in-up delay-100 hover:shadow-md transition-shadow duration-300">
               <h3 className="text-base font-semibold text-foreground flex items-center"><Brain className="w-5 h-5 mr-2.5 text-primary"/>AI Interview Questions</h3>
               <Select value={interviewCategory} onValueChange={setInterviewCategory}>
@@ -774,6 +801,7 @@ const toggleShareScreen = async () => {
               )}
             </div>
 
+            {/* Interview ID Input */}
             <div className="relative animate-fade-in-up delay-200">
               <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70 pointer-events-none" />
               <Input
@@ -784,13 +812,14 @@ const toggleShareScreen = async () => {
                 className="text-base h-14 bg-input border-input hover:border-primary/70 focus:border-primary focus-visible:ring-primary focus-visible:ring-2 rounded-lg shadow-inner-soft pl-12 pr-12 text-lg placeholder:text-muted-foreground/60 tracking-wider"
                 aria-label="Interview ID Input"
               />
-              {interviewId && !interviewId.startsWith("FF-NEW-") && (
+              {interviewId && !interviewId.startsWith("FF-NEW-") && ( // Show copy only if it's not a newly generated local ID
                  <Button variant="ghost" size="icon" onClick={handleCopyInterviewId} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" aria-label="Copy Interview ID">
                     {copied ? <Check className="h-5 w-5 text-green-400 animate-pop-in" /> : <Copy className="h-5 w-5" />}
                 </Button>
               )}
             </div>
 
+            {/* Join Button */}
             <Button
               onClick={handleConnect}
               disabled={isConnecting}
@@ -808,6 +837,7 @@ const toggleShareScreen = async () => {
               )}
             </Button>
 
+            {/* "Or" Separator */}
             <div className="relative py-2 animate-fade-in-up delay-350">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/40" />
@@ -819,6 +849,7 @@ const toggleShareScreen = async () => {
               </div>
             </div>
 
+            {/* Create New Interview Button */}
             <Button
               onClick={handleCreateInterview}
               variant="outline"
@@ -840,12 +871,14 @@ const toggleShareScreen = async () => {
     );
   }
 
+  // Interview View (when connected)
   return (
     <TooltipProvider delayDuration={150}>
     <div className={cn(
       "flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground",
-       isFullscreen && "bg-black" // Fullscreen specific background
+       isFullscreen && "bg-black fixed inset-0 z-[999]" // Fullscreen takes over entire viewport
       )}>
+      {/* Header (only shown if not fullscreen) */}
       {!isFullscreen && (
         <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20">
           <div className={cn("group flex items-center gap-2.5 animate-slide-in-left-smooth")}>
@@ -857,6 +890,7 @@ const toggleShareScreen = async () => {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 animate-fade-in-down delay-100">
+              {/* Interview Timer */}
               <div className="flex items-center gap-2 text-sm font-mono bg-muted/70 px-3 py-1.5 rounded-lg shadow-inner-soft text-foreground tabular-nums">
                 <Clock className="h-4.5 w-4.5 text-primary"/>
                 <span>{formatTime(timerSeconds)}</span>
@@ -877,6 +911,7 @@ const toggleShareScreen = async () => {
                   </TooltipTrigger>
                   <TooltipContent><p>Reset Timer</p></TooltipContent>
               </Tooltip>
+              {/* Interview ID and Share (hidden on smaller screens or adapted) */}
               <div className="hidden md:flex items-center gap-2">
                   <span className="text-muted-foreground text-sm mx-1">|</span>
                   <span className="text-muted-foreground text-sm">ID:</span>
@@ -937,30 +972,29 @@ const toggleShareScreen = async () => {
         </header>
       )}
 
-      <main className={cn("flex-1 flex gap-3.5 p-3.5 overflow-hidden bg-background/80", 
-        isFullscreen ? "flex-row items-stretch justify-center h-full" : "flex-col md:flex-row"
+      {/* Main Content Area: Videos and Chat */}
+      <main className={cn(
+        "flex-1 flex gap-3.5 p-3.5 overflow-hidden", 
+        isFullscreen ? "flex-row items-stretch justify-center h-full bg-black" : "flex-col md:flex-row bg-background/80"
       )}>
-        {/* Video Panel */}
+        {/* Videos Container */}
         <div className={cn(
-          "relative flex animate-fade-in-up delay-150 overflow-hidden",
-          isFullscreen ? "flex-row w-full h-full gap-4 p-8" : "flex-col md:w-2/3 lg:w-3/4 xl:w-4/5 order-1 md:order-1"
+          "flex flex-col gap-3.5 animate-fade-in-up delay-150 overflow-hidden",
+          isFullscreen ? "w-2/3 h-full p-4" : "md:w-2/3 lg:w-3/4 xl:w-4/5 order-1 md:order-1"
         )}>
            {/* Remote Video (Peer) */}
            <Card className={cn(
-             "overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative",
-             isFullscreen ? "w-1/2 h-full" : "flex-1 aspect-video md:aspect-auto"
+             "overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1"
            )}>
-              {!isFullscreen && (
-                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-                  <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
-                    <Users className="w-4.5 h-4.5" /> Peer
-                  </CardTitle>
-                </CardHeader>
-              )}
-              <CardContent className={cn("p-0 flex-1 bg-muted/40 flex items-center justify-center", !isFullscreen && "mt-[41px]")}>
-                 <video ref={remoteVideoRef} autoPlay playsInline className={cn("w-full h-full object-cover", isFullscreen ? "rounded-xl" : "rounded-b-xl")}></video>
+              <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                  <Users className="w-4.5 h-4.5" /> Peer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
+                 <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
                  {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
-                   <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center", isFullscreen ? "rounded-xl" : "rounded-b-xl")}>
+                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
                       <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
                           <AvatarImage src={`https://picsum.photos/seed/peerLarge/256/256`} alt="Peer Avatar" data-ai-hint="friendly avatar"/>
                           <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
@@ -973,42 +1007,37 @@ const toggleShareScreen = async () => {
 
            {/* Local Video (User) */}
            <Card className={cn(
-              "overflow-hidden shadow-2xl rounded-lg border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-20",
-              isFullscreen 
-                ? "w-1/2 h-full" 
-                : "absolute bottom-4 right-4 w-1/3 max-w-[280px] md:w-1/4 md:max-w-[240px] lg:w-1/5 lg:max-w-[200px] aspect-video"
+              "overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative flex-1 max-h-[40%]"
            )}>
-             {!isFullscreen && (
-                <CardHeader className="p-1.5 sm:p-2 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-lg border-b border-border/30 flex flex-row justify-between items-center">
-                <CardTitle className="text-xs sm:text-sm font-semibold text-primary flex items-center gap-1">
-                  <UserCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> {isScreenShared ? "Your Screen" : "You"}
-                </CardTitle>
-                <div className="flex items-center gap-1">
-                    {isMuted && <MicOff className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400" />}
-                    {isVideoOff && !isScreenShared && <VideoOff className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400" />}
-                    {!isMuted && <Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400" />}
-                    {!isVideoOff && !isScreenShared && <Video className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400" />}
-                 </div>
-                </CardHeader>
-             )}
-             <CardContent className={cn("p-0 flex-1 bg-muted/40 flex items-center justify-center relative", !isFullscreen && "mt-[29px] sm:mt-[33px]")}>
-               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300", isFullscreen ? "rounded-lg" : "rounded-b-lg", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
+             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
+              <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
+              </CardTitle>
+              <div className="flex items-center gap-1.5">
+                  {isMuted && <MicOff className="w-4 h-4 text-red-400" />}
+                  {isVideoOff && !isScreenShared && <VideoOff className="w-4 h-4 text-red-400" />}
+                  {!isMuted && <Mic className="w-4 h-4 text-green-400" />}
+                  {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
+               </div>
+              </CardHeader>
+             <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]">
+               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
                {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
-                 <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center", isFullscreen ? "rounded-lg" : "rounded-b-lg")}>
-                     <Avatar className={cn("w-10 h-10 sm:w-12 sm:h-12 shadow-md border border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                     <Avatar className={cn("w-16 h-16 shadow-md border border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
                      <AvatarImage src={`https://picsum.photos/seed/myAvatarSmall/64/64`} alt="My Avatar" data-ai-hint="professional avatar"/>
-                     <AvatarFallback className="text-sm sm:text-base bg-primary/25 text-primary rounded-full">
+                     <AvatarFallback className="text-xl bg-primary/25 text-primary rounded-full">
                          ME
                      </AvatarFallback>
                      </Avatar>
-                     {hasCameraPermission === false && !isScreenShared && <p className="mt-1 text-[10px] sm:text-xs text-destructive font-semibold">No Camera</p>}
-                     {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">Cam Off</p>}
+                     {hasCameraPermission === false && !isScreenShared && <p className="mt-2 text-xs text-destructive font-semibold">No Camera Access</p>}
+                     {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
                  </div>
                )}
                 {hasCameraPermission === null && !isScreenShared && (
-                  <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center", isFullscreen ? "rounded-lg" : "rounded-b-lg")}>
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary animate-spin mb-1" />
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Camera...</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                    <p className="text-xs text-muted-foreground">Accessing Camera...</p>
                   </div>
                 )}
              </CardContent>
@@ -1017,272 +1046,275 @@ const toggleShareScreen = async () => {
 
 
         {/* Chat/Tabs Panel */}
-        {!isFullscreen && (
-          <Card className="flex-1 md:w-1/3 lg:w-1/4 xl:w-1/5 flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-100px)] md:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250 order-2 md:order-2">
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
-                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
-                  <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                      <MessageSquare className="h-4 w-4"/> Chat
-                  </TabsTrigger>
-                  <TabsTrigger value="questions" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                      <ListChecks className="h-4 w-4"/> Questions
-                  </TabsTrigger>
-                  <TabsTrigger value="notes" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                      <FileText className="h-4 w-4"/> Notes
-                  </TabsTrigger>
-                  <TabsTrigger value="feedback" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
-                      <Bot className="h-4 w-4"/> AI Coach
-                  </TabsTrigger>
-                  <TabsTrigger value="resources" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
-                      <Lightbulb className="h-4 w-4"/> Resources
-                  </TabsTrigger>
-                </TabsList>
+        <Card className={cn(
+          "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250",
+          isFullscreen ? "w-1/3 h-full max-h-full" : "flex-1 md:w-1/3 lg:w-1/4 xl:w-1/5 max-h-[calc(100vh-100px)] md:max-h-full order-2 md:order-2"
+        )}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
+                <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
+                    <MessageSquare className="h-4 w-4"/> Chat
+                </TabsTrigger>
+                <TabsTrigger value="questions" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
+                    <ListChecks className="h-4 w-4"/> Questions
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
+                    <FileText className="h-4 w-4"/> Notes
+                </TabsTrigger>
+                <TabsTrigger value="feedback" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
+                    <Bot className="h-4 w-4"/> AI Coach
+                </TabsTrigger>
+                <TabsTrigger value="resources" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
+                    <Lightbulb className="h-4 w-4"/> Resources
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
-                  <ScrollArea className="flex-1 p-3.5 bg-background/50" viewportRef={chatScrollAreaRef}>
-                    <div className="space-y-4">
-                      {messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={cn(
-                            "flex animate-slide-in-bottom-fast",
-                            msg.sender === "me" ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          <div className={cn("flex items-end gap-2 max-w-[85%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
-                            <Avatar className={cn("h-8 w-8 shadow-md", msg.sender === "me" ? "ml-1.5" : msg.sender === "ai" ? "mr-1.5" : "mr-1.5")}>
-                              {msg.sender === 'ai' ? (
-                                  <AvatarFallback className="bg-gradient-to-br from-accent to-accent/70 text-accent-foreground shadow-inner-soft"><Bot className="h-4.5 w-4.5"/></AvatarFallback>
-                              ) : (
-                                  <>
-                                  <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed01'}/32/32` : `https://picsum.photos/seed/${'peerseed02'}/32/32`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "professional avatar" : "friendly avatar"}/>
-                                  <AvatarFallback className={cn("text-xs font-semibold",msg.sender === "me" ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground" : "bg-gradient-to-br from-secondary to-secondary/70 text-secondary-foreground")}>
-                                    {msg.sender === "me" ? "ME" : "P"}
-                                  </AvatarFallback>
-                                  </>
-                              )}
-                            </Avatar>
-                            <div
-                              className={cn("p-3 px-3.5 rounded-xl shadow-lg",
-                                msg.sender === "me"
-                                  ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-br-xl"
-                                  : msg.sender === "ai"
-                                  ? "bg-accent/15 text-accent-foreground border border-accent/40 rounded-bl-xl shadow-accent/10"
-                                  : "bg-card text-card-foreground rounded-bl-xl border border-border/60"
-                              )}
-                            >
-                              <p className="break-words leading-relaxed text-sm">{msg.text}</p>
-                              <p className={cn("text-[11px] mt-2 opacity-90", msg.sender === "me" ? "text-primary-foreground/90" : msg.sender === "ai" ? "text-accent-foreground/90" : "text-muted-foreground", "text-right")}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                              {msg.sender === "ai" && msg.feedback !== undefined && (
-                                  <div className="mt-2.5 pt-2 border-t border-accent/30 flex items-center justify-end space-x-2">
-                                      <Tooltip>
-                                          <TooltipTrigger asChild>
-                                              <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-green-500/25 text-muted-foreground hover:text-green-400", msg.feedback === "good" && "bg-green-500/25 text-green-400")} onClick={() => handleMessageFeedback(msg.id, "good")}>
-                                                  <ThumbsUp className="h-4 w-4" />
-                                              </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent side="top" className="text-xs p-1.5"><p>Helpful</p></TooltipContent>
-                                      </Tooltip>
-                                       <Tooltip>
-                                          <TooltipTrigger asChild>
-                                              <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-red-500/25 text-muted-foreground hover:text-red-400", msg.feedback === "bad" && "bg-red-500/25 text-red-400")} onClick={() => handleMessageFeedback(msg.id, "bad")}>
-                                                  <ThumbsDown className="h-4 w-4" />
-                                              </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent side="top" className="text-xs p-1.5"><p>Not Helpful</p></TooltipContent>
-                                      </Tooltip>
-                                  </div>
-                              )}
-                            </div>
+              <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
+                <ScrollArea className="flex-1 p-3.5 bg-background/50" viewportRef={chatScrollAreaRef}>
+                  <div className="space-y-4">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "flex animate-slide-in-bottom-fast",
+                          msg.sender === "me" ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        <div className={cn("flex items-end gap-2 max-w-[85%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
+                          <Avatar className={cn("h-8 w-8 shadow-md", msg.sender === "me" ? "ml-1.5" : msg.sender === "ai" ? "mr-1.5" : "mr-1.5")}>
+                            {msg.sender === 'ai' ? (
+                                <AvatarFallback className="bg-gradient-to-br from-accent to-accent/70 text-accent-foreground shadow-inner-soft"><Bot className="h-4.5 w-4.5"/></AvatarFallback>
+                            ) : (
+                                <>
+                                <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed01'}/32/32` : `https://picsum.photos/seed/${'peerseed02'}/32/32`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "professional avatar" : "friendly avatar"}/>
+                                <AvatarFallback className={cn("text-xs font-semibold",msg.sender === "me" ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground" : "bg-gradient-to-br from-secondary to-secondary/70 text-secondary-foreground")}>
+                                  {msg.sender === "me" ? "ME" : "P"}
+                                </AvatarFallback>
+                                </>
+                            )}
+                          </Avatar>
+                          <div
+                            className={cn("p-3 px-3.5 rounded-xl shadow-lg",
+                              msg.sender === "me"
+                                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-br-xl"
+                                : msg.sender === "ai"
+                                ? "bg-accent/15 text-accent-foreground border border-accent/40 rounded-bl-xl shadow-accent/10"
+                                : "bg-card text-card-foreground rounded-bl-xl border border-border/60"
+                            )}
+                          >
+                            <p className="break-words leading-relaxed text-sm">{msg.text}</p>
+                            <p className={cn("text-[11px] mt-2 opacity-90", msg.sender === "me" ? "text-primary-foreground/90" : msg.sender === "ai" ? "text-accent-foreground/90" : "text-muted-foreground", "text-right")}>
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {msg.sender === "ai" && msg.feedback !== undefined && ( // Show feedback buttons for AI messages
+                                <div className="mt-2.5 pt-2 border-t border-accent/30 flex items-center justify-end space-x-2">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-green-500/25 text-muted-foreground hover:text-green-400", msg.feedback === "good" && "bg-green-500/25 text-green-400")} onClick={() => handleMessageFeedback(msg.id, "good")}>
+                                                <ThumbsUp className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-xs p-1.5"><p>Helpful</p></TooltipContent>
+                                    </Tooltip>
+                                     <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-red-500/25 text-muted-foreground hover:text-red-400", msg.feedback === "bad" && "bg-red-500/25 text-red-400")} onClick={() => handleMessageFeedback(msg.id, "bad")}>
+                                                <ThumbsDown className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-xs p-1.5"><p>Not Helpful</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-                      {messages.length === 0 && (
-                        <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up delay-300 flex flex-col items-center">
-                          <MessageCircleQuestion className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                          No messages yet. <br/> Start the conversation or ask the AI a question!
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                  <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
-                    <div className="flex w-full items-center space-x-2.5">
-                      <Input
-                        type="text"
-                        placeholder="Type a message..."
-                        value={newMessage}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => {if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage();}}}
-                        className="flex-1 h-11 focus-visible:ring-accent focus-visible:border-accent rounded-lg shadow-inner-soft text-sm bg-input border-input hover:border-accent/70 focus:border-accent placeholder:text-muted-foreground/60"
-                        aria-label="New message input"
-                      />
-                      <Button type="submit" size="icon" onClick={() => handleSendMessage()} className="bg-gradient-to-br from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-lg w-11 h-11 shadow-lg hover:shadow-accent/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.03]" aria-label="Send message">
-                        <Send className="h-5 w-5 text-accent-foreground" />
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="questions" className="flex-1 flex flex-col m-0 overflow-hidden">
-                   <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                      {isGeneratingQuestions && (
-                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4"/>
-                              <p className="text-base">Generating AI questions...</p>
-                              <Progress value={66} className="w-3/4 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
-                          </div>
-                      )}
-                      {!isGeneratingQuestions && generatedQuestions.length === 0 && (
-                          <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
-                              <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                              No questions generated yet. <br /> Use controls in the lobby or ask AI to generate some.
-                          </div>
-                      )}
-                      {!isGeneratingQuestions && generatedQuestions.length > 0 && (
-                          <div className="space-y-3.5">
-                              {generatedQuestions.map((question, index) => (
-                                  <Card key={index} className={cn("p-3.5 shadow-lg border-border/50 bg-card/90 hover:bg-card/95 transition-all duration-200 hover:shadow-primary/10", question.startsWith("Error:") || question.startsWith("Failed") ? "border-destructive/60 bg-destructive/10 shadow-destructive/10" : "", currentQuestionIndex === index && "ring-2 ring-offset-2 ring-offset-background ring-primary border-primary shadow-primary/20")}>
-                                      <div className="flex justify-between items-start gap-2">
-                                          <p className={cn("text-sm leading-relaxed flex-1", question.startsWith("Error:") || question.startsWith("Failed") ? "text-destructive font-medium" : "text-card-foreground")}>
-                                              <strong className="text-primary mr-2">{index + 1}.</strong> {question}
-                                          </p>
-                                          {currentQuestionIndex !== index && !(question.startsWith("Error:") || question.startsWith("Failed")) && (
-                                              <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                      <Button size="icon" variant="ghost" className="h-8 w-8 ml-2 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" onClick={() => handleStartQuestionTimer(index)}>
-                                                          <Timer className="h-4.5 w-4.5"/>
-                                                      </Button>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent><p>Start Timer for this Question</p></TooltipContent>
-                                              </Tooltip>
-                                          )}
-                                      </div>
-                                      {currentQuestionIndex === index && (
-                                          <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
-                                              <span className="text-base font-mono text-primary tabular-nums">{formatTime(questionTimerSeconds)}</span>
-                                              <Button size="sm" variant="destructive" onClick={handleStopQuestionTimer} className="gap-1.5 rounded-md">
-                                                  <Pause className="h-4 w-4"/> Stop Timer
-                                              </Button>
-                                          </div>
-                                      )}
-                                       {!(question.startsWith("Error:") || question.startsWith("Failed")) && (
-                                          <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-start space-x-2">
-                                              <span className="text-xs text-muted-foreground mr-2">Rate difficulty:</span>
-                                              {["easy", "medium", "hard"].map(diff => (
-                                                  <Button
-                                                      key={diff}
-                                                      variant={questionDifficulty === diff ? "default" : "outline"}
-                                                      size="sm"
-                                                      onClick={() => handleRateQuestion(diff as "easy"|"medium"|"hard")}
-                                                      className={cn("capitalize text-xs px-2.5 py-1 h-auto rounded-md",
-                                                          questionDifficulty === diff && (diff === "easy" ? "bg-green-500/80 hover:bg-green-500/90 border-green-500/80 text-white" : diff === "medium" ? "bg-yellow-500/80 hover:bg-yellow-500/90 border-yellow-500/80 text-white" : "bg-red-500/80 hover:bg-red-500/90 border-red-500/80 text-white"),
-                                                          questionDifficulty !== diff && "border-border/50 hover:border-primary/70"
-                                                      )}
-                                                  >
-                                                      {diff}
-                                                  </Button>
-                                              ))}
-                                          </div>
-                                      )}
-                                  </Card>
-                              ))}
-                          </div>
-                      )}
-                   </ScrollArea>
-                </TabsContent>
-
-                <TabsContent value="notes" className="flex-1 flex flex-col m-0 overflow-hidden">
-                  <ScrollArea className="flex-1 p-0.5 bg-background/50">
-                      <Textarea
-                          placeholder="Your private notes for the interview... (Only visible to you)"
-                          value={userNotes}
-                          onChange={(e) => setUserNotes(e.target.value)}
-                          className="w-full h-full min-h-[200px] p-3.5 text-sm border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent resize-none placeholder:text-muted-foreground/60"
-                      />
-                  </ScrollArea>
-                   <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
-                      <p className="text-xs text-muted-foreground text-center">Notes are saved locally in your browser.</p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="feedback" className="flex-1 flex flex-col m-0 overflow-hidden">
-                   <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                      <div className="space-y-4">
-                          <Button onClick={handleGetAiFeedback} disabled={showAiFeedbackProcessing} className="w-full h-11 text-base font-medium bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity rounded-lg shadow-lg hover:shadow-primary/30">
-                              {showAiFeedbackProcessing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Sparkles className="h-5 w-5 mr-2"/>}
-                              {showAiFeedbackProcessing ? "Analyzing Session..." : "Get AI Feedback on Session"}
-                          </Button>
-                          {overallFeedback && (
-                              <Card className="p-4 bg-card/90 border-accent/50 shadow-lg animate-scale-in">
-                                  <CardHeader className="p-0 pb-2.5">
-                                      <CardTitle className="text-lg text-accent flex items-center gap-2.5"><Bot className="h-5.5 w-5.5"/> AI Coach Summary</CardTitle>
-                                  </CardHeader>
-                                  <CardContent className="p-0">
-                                      <p className="text-sm text-card-foreground whitespace-pre-wrap leading-relaxed">{overallFeedback}</p>
-                                  </CardContent>
-                              </Card>
-                          )}
-                          {showAiFeedbackProcessing && (
-                              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-3"/>
-                                  <p className="text-base">AI is processing your session...</p>
-                                  <Progress value={50} className="w-4/5 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
-                              </div>
-                          )}
-                           {!showAiFeedbackProcessing && !overallFeedback && (
-                               <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
-                                  <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                                  Click the button above to get AI-powered feedback on your interview performance and interactions.
-                              </div>
-                           )}
                       </div>
-                   </ScrollArea>
-                </TabsContent>
-                <TabsContent value="resources" className="flex-1 flex flex-col m-0 overflow-hidden">
-                  <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                      <div className="space-y-4">
-                          <Card className="p-4 bg-card/90 border-primary/40 shadow-lg">
-                              <CardHeader className="p-0 pb-2">
-                                  <CardTitle className="text-lg text-primary flex items-center gap-2"><Lightbulb className="h-5 w-5"/> Interview Tips</CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-0 text-sm space-y-1.5 text-card-foreground">
-                                  <p><strong className="font-medium">STAR Method:</strong> Structure answers for behavioral questions (Situation, Task, Action, Result).</p>
-                                  <p><strong className="font-medium">Research:</strong> Understand the company and role you're (mock) interviewing for.</p>
-                                  <p><strong className="font-medium">Ask Questions:</strong> Prepare thoughtful questions for your interviewer (peer).</p>
-                                  <p><strong className="font-medium">Body Language:</strong> Maintain good posture and eye contact (even virtual!).</p>
-                              </CardContent>
-                          </Card>
-                          <Card className="p-4 bg-card/90 border-accent/40 shadow-lg">
-                              <CardHeader className="p-0 pb-2">
-                                  <CardTitle className="text-lg text-accent flex items-center gap-2"><Brain className="h-5 w-5"/> Common Topics</CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-0 text-sm space-y-1 text-card-foreground">
-                                  <ul className="list-disc list-inside pl-1 space-y-1 marker:text-accent/80">
-                                      <li>Data Structures & Algorithms (for Tech roles)</li>
-                                      <li>Problem Solving & Critical Thinking</li>
-                                      <li>Teamwork & Collaboration</li>
-                                      <li>Strengths & Weaknesses</li>
-                                      <li>Why are you interested in this field?</li>
-                                  </ul>
-                              </CardContent>
-                          </Card>
-                           <Alert className="border-primary/40 bg-primary/5">
-                              <Star className="h-5 w-5 text-primary" />
-                              <AlertTitle className="text-primary">Pro Tip!</AlertTitle>
-                              <AlertDescription className="text-primary/80">
-                                  Record your mock interviews (if your peer agrees) and review them later to identify areas for improvement. Self-reflection is key!
-                              </AlertDescription>
-                          </Alert>
+                    ))}
+                    {messages.length === 0 && (
+                      <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up delay-300 flex flex-col items-center">
+                        <MessageCircleQuestion className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
+                        No messages yet. <br/> Start the conversation or ask the AI a question!
                       </div>
-                  </ScrollArea>
+                    )}
+                  </div>
+                </ScrollArea>
+                <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
+                  <div className="flex w-full items-center space-x-2.5">
+                    <Input
+                      type="text"
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage();}}}
+                      className="flex-1 h-11 focus-visible:ring-accent focus-visible:border-accent rounded-lg shadow-inner-soft text-sm bg-input border-input hover:border-accent/70 focus:border-accent placeholder:text-muted-foreground/60"
+                      aria-label="New message input"
+                    />
+                    <Button type="submit" size="icon" onClick={() => handleSendMessage()} className="bg-gradient-to-br from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-lg w-11 h-11 shadow-lg hover:shadow-accent/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.03]" aria-label="Send message">
+                      <Send className="h-5 w-5 text-accent-foreground" />
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
-              </Tabs>
-          </Card>
-        )}
+
+              <TabsContent value="questions" className="flex-1 flex flex-col m-0 overflow-hidden">
+                 <ScrollArea className="flex-1 p-3.5 bg-background/50">
+                    {isGeneratingQuestions && ( // Show loader while generating
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4"/>
+                            <p className="text-base">Generating AI questions...</p>
+                            <Progress value={66} className="w-3/4 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
+                        </div>
+                    )}
+                    {!isGeneratingQuestions && generatedQuestions.length === 0 && (
+                        <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
+                            <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
+                            No questions generated yet. <br /> Use controls in the lobby or ask AI to generate some.
+                        </div>
+                    )}
+                    {!isGeneratingQuestions && generatedQuestions.length > 0 && (
+                        <div className="space-y-3.5">
+                            {generatedQuestions.map((question, index) => (
+                                <Card key={index} className={cn("p-3.5 shadow-lg border-border/50 bg-card/90 hover:bg-card/95 transition-all duration-200 hover:shadow-primary/10", question.startsWith("Error:") || question.startsWith("Failed") ? "border-destructive/60 bg-destructive/10 shadow-destructive/10" : "", currentQuestionIndex === index && "ring-2 ring-offset-2 ring-offset-background ring-primary border-primary shadow-primary/20")}>
+                                    <div className="flex justify-between items-start gap-2">
+                                        <p className={cn("text-sm leading-relaxed flex-1", question.startsWith("Error:") || question.startsWith("Failed") ? "text-destructive font-medium" : "text-card-foreground")}>
+                                            <strong className="text-primary mr-2">{index + 1}.</strong> {question}
+                                        </p>
+                                        {currentQuestionIndex !== index && !(question.startsWith("Error:") || question.startsWith("Failed")) && ( // Show start timer button if not current question
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 ml-2 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" onClick={() => handleStartQuestionTimer(index)}>
+                                                        <Timer className="h-4.5 w-4.5"/>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>Start Timer for this Question</p></TooltipContent>
+                                            </Tooltip>
+                                        )}
+                                    </div>
+                                    {currentQuestionIndex === index && ( // Show timer and stop button if current question
+                                        <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
+                                            <span className="text-base font-mono text-primary tabular-nums">{formatTime(questionTimerSeconds)}</span>
+                                            <Button size="sm" variant="destructive" onClick={handleStopQuestionTimer} className="gap-1.5 rounded-md">
+                                                <Pause className="h-4 w-4"/> Stop Timer
+                                            </Button>
+                                        </div>
+                                    )}
+                                     {/* Difficulty Rating for non-error questions */}
+                                     {!(question.startsWith("Error:") || question.startsWith("Failed")) && (
+                                        <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-start space-x-2">
+                                            <span className="text-xs text-muted-foreground mr-2">Rate difficulty:</span>
+                                            {["easy", "medium", "hard"].map(diff => (
+                                                <Button
+                                                    key={diff}
+                                                    variant={questionDifficulty === diff ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => handleRateQuestion(diff as "easy"|"medium"|"hard")}
+                                                    className={cn("capitalize text-xs px-2.5 py-1 h-auto rounded-md",
+                                                        questionDifficulty === diff && (diff === "easy" ? "bg-green-500/80 hover:bg-green-500/90 border-green-500/80 text-white" : diff === "medium" ? "bg-yellow-500/80 hover:bg-yellow-500/90 border-yellow-500/80 text-white" : "bg-red-500/80 hover:bg-red-500/90 border-red-500/80 text-white"),
+                                                        questionDifficulty !== diff && "border-border/50 hover:border-primary/70"
+                                                    )}
+                                                >
+                                                    {diff}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                 </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="notes" className="flex-1 flex flex-col m-0 overflow-hidden">
+                <ScrollArea className="flex-1 p-0.5 bg-background/50">
+                    <Textarea
+                        placeholder="Your private notes for the interview... (Only visible to you)"
+                        value={userNotes}
+                        onChange={(e) => setUserNotes(e.target.value)}
+                        className="w-full h-full min-h-[200px] p-3.5 text-sm border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent resize-none placeholder:text-muted-foreground/60"
+                    />
+                </ScrollArea>
+                 <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
+                    <p className="text-xs text-muted-foreground text-center">Notes are saved locally in your browser.</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="feedback" className="flex-1 flex flex-col m-0 overflow-hidden">
+                 <ScrollArea className="flex-1 p-3.5 bg-background/50">
+                    <div className="space-y-4">
+                        <Button onClick={handleGetAiFeedback} disabled={showAiFeedbackProcessing} className="w-full h-11 text-base font-medium bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity rounded-lg shadow-lg hover:shadow-primary/30">
+                            {showAiFeedbackProcessing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Sparkles className="h-5 w-5 mr-2"/>}
+                            {showAiFeedbackProcessing ? "Analyzing Session..." : "Get AI Feedback on Session"}
+                        </Button>
+                        {overallFeedback && ( // Display AI feedback if available
+                            <Card className="p-4 bg-card/90 border-accent/50 shadow-lg animate-scale-in">
+                                <CardHeader className="p-0 pb-2.5">
+                                    <CardTitle className="text-lg text-accent flex items-center gap-2.5"><Bot className="h-5.5 w-5.5"/> AI Coach Summary</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <p className="text-sm text-card-foreground whitespace-pre-wrap leading-relaxed">{overallFeedback}</p>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {showAiFeedbackProcessing && ( // Show loader while processing
+                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary mb-3"/>
+                                <p className="text-base">AI is processing your session...</p>
+                                <Progress value={50} className="w-4/5 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
+                            </div>
+                        )}
+                         {!showAiFeedbackProcessing && !overallFeedback && ( // Initial state for feedback tab
+                             <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
+                                <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
+                                Click the button above to get AI-powered feedback on your interview performance and interactions.
+                            </div>
+                         )}
+                    </div>
+                 </ScrollArea>
+              </TabsContent>
+              <TabsContent value="resources" className="flex-1 flex flex-col m-0 overflow-hidden">
+                <ScrollArea className="flex-1 p-3.5 bg-background/50">
+                    <div className="space-y-4">
+                        <Card className="p-4 bg-card/90 border-primary/40 shadow-lg">
+                            <CardHeader className="p-0 pb-2">
+                                <CardTitle className="text-lg text-primary flex items-center gap-2"><Lightbulb className="h-5 w-5"/> Interview Tips</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 text-sm space-y-1.5 text-card-foreground">
+                                <p><strong className="font-medium">STAR Method:</strong> Structure answers for behavioral questions (Situation, Task, Action, Result).</p>
+                                <p><strong className="font-medium">Research:</strong> Understand the company and role you're (mock) interviewing for.</p>
+                                <p><strong className="font-medium">Ask Questions:</strong> Prepare thoughtful questions for your interviewer (peer).</p>
+                                <p><strong className="font-medium">Body Language:</strong> Maintain good posture and eye contact (even virtual!).</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="p-4 bg-card/90 border-accent/40 shadow-lg">
+                            <CardHeader className="p-0 pb-2">
+                                <CardTitle className="text-lg text-accent flex items-center gap-2"><Brain className="h-5 w-5"/> Common Topics</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 text-sm space-y-1 text-card-foreground">
+                                <ul className="list-disc list-inside pl-1 space-y-1 marker:text-accent/80">
+                                    <li>Data Structures & Algorithms (for Tech roles)</li>
+                                    <li>Problem Solving & Critical Thinking</li>
+                                    <li>Teamwork & Collaboration</li>
+                                    <li>Strengths & Weaknesses</li>
+                                    <li>Why are you interested in this field?</li>
+                                </ul>
+                            </CardContent>
+                        </Card>
+                         <Alert className="border-primary/40 bg-primary/5">
+                            <Star className="h-5 w-5 text-primary" />
+                            <AlertTitle className="text-primary">Pro Tip!</AlertTitle>
+                            <AlertDescription className="text-primary/80">
+                                Record your mock interviews (if your peer agrees) and review them later to identify areas for improvement. Self-reflection is key!
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                </ScrollArea>
+            </TabsContent>
+            </Tabs>
+        </Card>
       </main>
 
+      {/* Footer: Call Controls (only shown if not fullscreen) */}
       {!isFullscreen && (
           <footer className="bg-card/95 backdrop-blur-lg p-3 shadow-t-strong flex justify-center items-center space-x-2.5 sm:space-x-3.5 border-t border-border/50 animate-fade-in-up delay-350">
             {[
@@ -1300,6 +1332,7 @@ const toggleShareScreen = async () => {
                              control.active ? "secondary" : "outline"}
                     size={control.main ? "lg" : "default"}
                     onClick={control.action}
+                    // Disable video toggle if screen sharing is active (it's handled by screen share button now)
                     disabled={control.id === 'video' && isScreenShared && !isVideoOff} 
                     className={cn(
                       "rounded-full p-0 aspect-square",
@@ -1310,6 +1343,7 @@ const toggleShareScreen = async () => {
                         : control.specialActive ? "bg-primary hover:bg-primary/85 text-primary-foreground focus:ring-primary/60"
                         : control.active ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring/60"
                         : "border-border/70 hover:border-primary/80 focus:ring-ring/60 hover:bg-secondary/60 text-foreground",
+                      // Specific styling for disabled video button during screen share
                       (control.id === 'video' && isScreenShared && !isVideoOff) && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl" 
                     )}
                     aria-label={control.label}
