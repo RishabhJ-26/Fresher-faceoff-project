@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -20,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
-      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground`}>
+      <body className={`${inter.variable} font-sans antialiased flex flex-col h-full bg-background text-foreground`}>
         <Providers>
           <CustomCursor />
           {children}
@@ -30,4 +29,3 @@ export default function RootLayout({
     </html>
   );
 }
-
