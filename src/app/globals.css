@@ -59,13 +59,28 @@
     /* Dark theme is default, variables are defined in :root */
   }
 
+  /* Ensure cursor is visible by default for all elements */
+  * {
+    cursor: auto !important; 
+  }
+
   html, body {
     height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
-    cursor: none !important; /* Hide default cursor */
+    cursor: none !important; /* Hide default cursor specifically for html/body */
   }
+  
+  /* Ensure cursor is visible in fullscreen if default behavior is desired, overridden by custom cursor if present */
+  :fullscreen, ::backdrop {
+    cursor: auto !important;
+  }
+  
+  html:fullscreen, body:fullscreen {
+     cursor: none !important; /* Hide default cursor for html/body specifically in fullscreen */
+  }
+
 
   button, a, input, textarea, select, [role="button"], [data-interactive="true"] {
     cursor: none !important; /* Ensure interactive elements also hide default cursor */
@@ -105,7 +120,7 @@
   .shadow-inner-soft {
     box-shadow: inset 0 2px 4px hsla(var(--background), 0.5), inset 0 1px 2px hsla(var(--foreground-rgb), 0.03);
   }
-  .shadow-depth-3 { 
+  .shadow-depth-3 {
     box-shadow: 0 12px 25px hsla(var(--foreground-rgb), 0.06), 0 8px 10px hsla(var(--foreground-rgb), 0.04), 0 0 0 1px hsla(var(--foreground-rgb), 0.02);
   }
 
@@ -279,15 +294,15 @@
     transform: translateX(-200%) skewX(-25deg);
     opacity: 0.3; /* Start with some opacity if shine is always active */
   }
-  20% { 
+  20% {
     opacity: 0.7; /* Brighter peak */
   }
   60% {
-    transform: translateX(200%) skewX(-25deg); 
+    transform: translateX(200%) skewX(-25deg);
     opacity: 0.3; /* Fade out to base opacity */
   }
   100% {
-    transform: translateX(200%) skewX(-25deg); 
+    transform: translateX(200%) skewX(-25deg);
     opacity: 0.3; /* Ensure it's at base opacity at end of loop */
   }
 }

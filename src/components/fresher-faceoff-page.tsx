@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -83,7 +84,7 @@ interface Message {
   sender: "me" | "peer" | "ai";
   timestamp: Date;
   feedback?: "good" | "bad" | null;
-  reactions?: string[]; 
+  reactions?: string[];
 }
 
 const FAKE_ACTIVE_INTERVIEWS = new Set<string>();
@@ -125,7 +126,7 @@ export function FresherFaceoffPage() {
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const [activeTab, setActiveTab] = useState<"chat" | "questions" | "notes" | "feedback" | "resources">("chat");
   const [questionTimerSeconds, setQuestionTimerSeconds] = useState(0);
   const [isQuestionTimerRunning, setIsQuestionTimerRunning] = useState(false);
@@ -133,7 +134,7 @@ export function FresherFaceoffPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
   const [overallFeedback, setOverallFeedback] = useState("");
   const [showAiFeedbackProcessing, setShowAiFeedbackProcessing] = useState(false);
-  const [questionDifficulty, setQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null); 
+  const [questionDifficulty, setQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null);
 
 
   const { toast } = useToast();
@@ -143,7 +144,7 @@ export function FresherFaceoffPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
-  const mainLayoutRef = useRef<HTMLDivElement>(null);
+  // const mainLayoutRef = useRef<HTMLDivElement>(null); // No longer needed for documentElement fullscreen
 
 
   const stopStream = (stream: MediaStream | null) => {
@@ -176,7 +177,7 @@ export function FresherFaceoffPage() {
         localVideoRef.current.srcObject = stream;
       }
       setHasCameraPermission(true);
-      setIsVideoOff(false); 
+      setIsVideoOff(false);
       return stream;
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -207,26 +208,26 @@ export function FresherFaceoffPage() {
         screenStreamRef.current = null;
     }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: { cursor: "always" }, 
-        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } 
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: "always" },
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
       });
       screenStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
-      
+
       stream.getVideoTracks()[0].onended = () => {
         setIsScreenShared(false);
         startCameraStream(false).then(camStream => {
           if (!camStream) {
-            setIsVideoOff(true); 
+            setIsVideoOff(true);
           }
         });
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
       setIsScreenShared(true);
-      setIsVideoOff(false); 
+      setIsVideoOff(false);
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -244,7 +245,7 @@ export function FresherFaceoffPage() {
           description: "Could not start screen sharing. Please try again.",
         });
       }
-      setIsScreenShared(false); 
+      setIsScreenShared(false);
       return null;
     }
   }, [toast, startCameraStream]);
@@ -261,18 +262,18 @@ export function FresherFaceoffPage() {
             peerStream.addTrack(clonedTrack);
           });
           remoteVideoRef.current.srcObject = peerStream;
-          
+
           setTimeout(() => {
              if(remoteVideoRef.current && (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.getTracks().length === 0)) {
                 const mockStream = new MediaStream();
                 const canvas = document.createElement('canvas');
-                canvas.width = 320; 
+                canvas.width = 320;
                 canvas.height = 240;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                  ctx.fillStyle = 'hsl(var(--muted))'; 
+                  ctx.fillStyle = 'hsl(var(--muted))';
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
-                  ctx.fillStyle = 'hsl(var(--muted-foreground))'; 
+                  ctx.fillStyle = 'hsl(var(--muted-foreground))';
                   ctx.font = '20px Inter, sans-serif';
                   ctx.textAlign = 'center';
                   ctx.fillText('Peer Video Offline', canvas.width / 2, canvas.height / 2);
@@ -293,9 +294,9 @@ export function FresherFaceoffPage() {
       screenStreamRef.current = null;
       if (localVideoRef.current) localVideoRef.current.srcObject = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      setIsScreenShared(false); 
+      setIsScreenShared(false);
       setHasCameraPermission(null);
-      setIsVideoOff(false); 
+      setIsVideoOff(false);
     }
 
     return () => {
@@ -322,11 +323,11 @@ export function FresherFaceoffPage() {
       });
       return;
     }
-  
+
     setIsConnecting(true);
-  
-    if (hasCameraPermission === null) { 
-        const stream = await startCameraStream(false); 
+
+    if (hasCameraPermission === null) {
+        const stream = await startCameraStream(false);
         if (!stream) {
             toast({
                 variant: "destructive",
@@ -346,7 +347,7 @@ export function FresherFaceoffPage() {
 
     setTimeout(() => {
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
-      
+
       if (!FAKE_ACTIVE_INTERVIEWS.has(effectiveId) && !interviewId.startsWith("FF-NEW-")) {
          toast({
            variant: "destructive",
@@ -367,8 +368,8 @@ export function FresherFaceoffPage() {
       let currentId = interviewId;
       if (interviewId.startsWith("FF-NEW-")) {
           currentId = effectiveId;
-          FAKE_ACTIVE_INTERVIEWS.add(currentId); 
-          setInterviewId(currentId); 
+          FAKE_ACTIVE_INTERVIEWS.add(currentId);
+          setInterviewId(currentId);
           toast({
             title: "Interview Created & Joined!",
             description: (
@@ -383,12 +384,12 @@ export function FresherFaceoffPage() {
           description: `Joined interview: ${currentId}`,
         });
       }
-    }, 1500); 
+    }, 1500);
   };
-  
+
   const handleCreateInterview = () => {
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newId = `FF-NEW-${randomPart}`; 
+    const newId = `FF-NEW-${randomPart}`;
     setInterviewId(newId);
     toast({
       title: "New Interview ID Generated!",
@@ -398,61 +399,61 @@ export function FresherFaceoffPage() {
           <p className="text-xs mt-1">Click 'Join Interview' to start. Share this ID with your peer.</p>
         </div>
       ),
-      duration: 8000, 
+      duration: 8000,
     });
     navigator.clipboard.writeText(newId.replace("FF-NEW-","FF-"));
-    setCopied(true); 
-    setTimeout(() => setCopied(false), 3000); 
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
-  
+
   const handleDisconnect = () => {
     setIsConnected(false);
-    setMessages([]); 
+    setMessages([]);
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
-    FAKE_ACTIVE_INTERVIEWS.delete(effectiveId); 
-    setInterviewId(""); 
+    FAKE_ACTIVE_INTERVIEWS.delete(effectiveId);
+    setInterviewId("");
     toast({ title: "Disconnected", description: "You have left the interview session." });
-    
+
     if (isFullscreen) {
-        document.exitFullscreen?.();
+        document.exitFullscreen?.().catch(err => console.error("Error exiting fullscreen on disconnect:", err));
         setIsFullscreen(false);
     }
     setIsTimerRunning(false);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     setTimerSeconds(0);
-    
+
     setIsQuestionTimerRunning(false);
     if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current);
     setQuestionTimerSeconds(0);
     setCurrentQuestionIndex(null);
     setOverallFeedback("");
     setShowAiFeedbackProcessing(false);
-    setActiveTab("chat"); 
+    setActiveTab("chat");
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
     const messageText = text || newMessage;
     if (messageText.trim()) {
-      const newMsg: Message = { 
-        id: `msg-${Date.now()}-${Math.random()}`, 
-        text: messageText, 
-        sender: sender, 
+      const newMsg: Message = {
+        id: `msg-${Date.now()}-${Math.random()}`,
+        text: messageText,
+        sender: sender,
         timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined, 
+        feedback: sender === "ai" ? null : undefined,
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
-      
+
       if (sender === "me") {
         setTimeout(() => {
           const peerResponse: Message = {
-            id: `msg-${Date.now() + 1}-${Math.random()}`, 
-            text: `Received: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`, 
-            sender: "peer", 
-            timestamp: new Date() 
+            id: `msg-${Date.now() + 1}-${Math.random()}`,
+            text: `Received: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`,
+            sender: "peer",
+            timestamp: new Date()
           };
           setMessages(prev => [...prev, peerResponse]);
-        }, 800); 
-        setNewMessage(""); 
+        }, 800);
+        setNewMessage("");
       }
     }
   };
@@ -473,56 +474,56 @@ export function FresherFaceoffPage() {
         return;
     }
     const newVideoOffState = !isVideoOff;
-    
-    if (localStreamRef.current) { 
+
+    if (localStreamRef.current) {
         localStreamRef.current.getVideoTracks().forEach(track => {
-          track.enabled = !newVideoOffState; 
+          track.enabled = !newVideoOffState;
         });
         setIsVideoOff(newVideoOffState);
-    } else if (!newVideoOffState) { 
-        const stream = await startCameraStream(); 
-        if(stream) setIsVideoOff(false); 
-        else setIsVideoOff(true); 
-    } else { 
+    } else if (!newVideoOffState) {
+        const stream = await startCameraStream();
+        if(stream) setIsVideoOff(false);
+        else setIsVideoOff(true);
+    } else {
         setIsVideoOff(true);
     }
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
   };
 
   const toggleShareScreen = async () => {
-    if (!isScreenShared) { 
-        if(localStreamRef.current){ 
+    if (!isScreenShared) {
+        if(localStreamRef.current){
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
-        if (localVideoRef.current) localVideoRef.current.srcObject = null; 
-        
-        const stream = await startScreenShareStream(); 
-        if (stream) { 
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+
+        const stream = await startScreenShareStream();
+        if (stream) {
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else { 
+        } else {
            if(localStreamRef.current && localVideoRef.current){
-              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
               localVideoRef.current.srcObject = localStreamRef.current;
            } else {
-             await startCameraStream(false); 
+             await startCameraStream(false);
            }
         }
-    } else { 
+    } else {
         if(screenStreamRef.current){
             screenStreamRef.current.getTracks().forEach(track => track.stop());
             screenStreamRef.current = null;
         }
         setIsScreenShared(false);
         if(localStreamRef.current && localVideoRef.current){
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
             localVideoRef.current.srcObject = localStreamRef.current;
         } else {
-            await startCameraStream(false); 
+            await startCameraStream(false);
         }
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
     }
   };
-  
+
   const handleCopyInterviewId = () => {
     const idToCopy = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
     if (idToCopy) {
@@ -534,19 +535,19 @@ export function FresherFaceoffPage() {
   };
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement && mainLayoutRef.current) {
-      mainLayoutRef.current.requestFullscreen().catch(err => {
+    const element = document.documentElement; // Use documentElement for fullscreen
+
+    if (!document.fullscreenElement) {
+      element.requestFullscreen().catch(err => {
         toast({ variant: "destructive", title: "Fullscreen Error", description: "Could not enter fullscreen mode."});
         console.error("Fullscreen request failed:", err);
       });
-      setIsFullscreen(true);
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(err => {
           toast({ variant: "destructive", title: "Fullscreen Error", description: "Could not exit fullscreen mode."});
           console.error("Exit fullscreen request failed:", err);
         });
-        setIsFullscreen(false);
       }
     }
   };
@@ -570,7 +571,7 @@ export function FresherFaceoffPage() {
     }
 
     setIsGeneratingQuestions(true);
-    setGeneratedQuestions([]); 
+    setGeneratedQuestions([]);
     try {
       const topic = interviewCategory === "Custom Topic" ? customTopic : interviewCategory;
       const result: GenerateInterviewQuestionsOutput = await generateInterviewQuestions({ topic, numQuestions: 5 });
@@ -585,7 +586,7 @@ export function FresherFaceoffPage() {
     } catch (error: any) {
       console.error("Error generating questions:", error);
       toast({ variant: "destructive", title: "Error Generating Questions", description: error.message || "An unexpected error occurred." });
-      setGeneratedQuestions(["Failed to load questions. Please try again."]); 
+      setGeneratedQuestions(["Failed to load questions. Please try again."]);
     } finally {
       setIsGeneratingQuestions(false);
     }
@@ -601,7 +602,7 @@ export function FresherFaceoffPage() {
         clearInterval(timerIntervalRef.current);
       }
     }
-    return () => { 
+    return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
@@ -619,7 +620,7 @@ export function FresherFaceoffPage() {
     setIsTimerRunning(false);
     setTimerSeconds(0);
   };
-  
+
   useEffect(() => {
     if (isQuestionTimerRunning) {
       questionTimerIntervalRef.current = setInterval(() => {
@@ -630,7 +631,7 @@ export function FresherFaceoffPage() {
         clearInterval(questionTimerIntervalRef.current);
       }
     }
-    return () => { 
+    return () => {
       if (questionTimerIntervalRef.current) {
         clearInterval(questionTimerIntervalRef.current);
       }
@@ -639,28 +640,28 @@ export function FresherFaceoffPage() {
 
   const handleStartQuestionTimer = (index: number) => {
     setCurrentQuestionIndex(index);
-    setQuestionTimerSeconds(0); 
+    setQuestionTimerSeconds(0);
     setIsQuestionTimerRunning(true);
     toast({ title: "Question Timer Started", description: `Timing for question ${index + 1}.`});
   };
-  
+
   const handleStopQuestionTimer = () => {
     setIsQuestionTimerRunning(false);
     if (currentQuestionIndex !== null) {
         handleSendMessage(`Finished question ${currentQuestionIndex + 1}. Time taken: ${formatTime(questionTimerSeconds)}`, "ai");
     }
-    setCurrentQuestionIndex(null); 
+    setCurrentQuestionIndex(null);
   };
 
   const handleMessageFeedback = (messageId: string, feedback: "good" | "bad") => {
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
+    setMessages(prevMessages =>
+      prevMessages.map(msg =>
         msg.id === messageId ? { ...msg, feedback } : msg
       )
     );
     toast({ title: "Feedback Submitted", description: `Marked AI response as ${feedback}.` });
   };
-  
+
   const handleGetAiFeedback = () => {
     if (messages.filter(m => m.sender === "me" || m.sender === "peer").length < 2) {
       toast({ variant: "destructive", title: "Not Enough Interaction", description: "Please have a more substantial conversation before requesting AI feedback." });
@@ -670,11 +671,11 @@ export function FresherFaceoffPage() {
     setTimeout(() => {
       const feedbackText = `Overall, the interview interaction showed good potential. Key strengths include clear communication and relevant questions. Areas for improvement could be to elaborate more on answers and to ask more follow-up questions to dive deeper into topics. The pacing was generally good. Remember to maintain eye contact and show enthusiasm!`;
       setOverallFeedback(feedbackText);
-      handleSendMessage(feedbackText, "ai"); 
-      setActiveTab("feedback"); 
+      handleSendMessage(feedbackText, "ai");
+      setActiveTab("feedback");
       setShowAiFeedbackProcessing(false);
       toast({ title: "AI Feedback Generated!", description: "Check the 'Feedback' tab for insights." });
-    }, 2500); 
+    }, 2500);
   };
 
   const handleShareInterview = () => {
@@ -683,7 +684,7 @@ export function FresherFaceoffPage() {
       navigator.share({
         title: 'Join My Fresher Faceoff Interview!',
         text: `Let's practice! Join my Fresher Faceoff interview with ID: ${idToShare}`,
-        url: window.location.href, 
+        url: window.location.href,
       })
       .then(() => toast({ title: "Shared!", description: "Interview details sent."}))
       .catch((error) => {
@@ -710,7 +711,7 @@ export function FresherFaceoffPage() {
           <CardHeader className="text-center p-0 mb-8">
              <div className={cn(
                 "group mx-auto mb-6 p-3.5 bg-gradient-to-tr from-primary via-accent to-primary/70 rounded-full w-fit shadow-xl shadow-primary/30 transform transition-all hover:scale-105 duration-300",
-                "animate-shine" 
+                "animate-shine"
               )}>
               <Users className="h-16 w-16 sm:h-20 sm:w-20 text-primary-foreground" />
             </div>
@@ -721,7 +722,7 @@ export function FresherFaceoffPage() {
               Peer-to-Peer Mock Interviews <br className="sm:hidden"/> with AI Assistance
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-6 p-0">
             <div className="space-y-3 p-4 border border-border/30 rounded-xl bg-background/60 shadow-sm animate-fade-in-up delay-100 hover:shadow-md transition-shadow duration-300">
               <h3 className="text-base font-semibold text-foreground flex items-center"><Brain className="w-5 h-5 mr-2.5 text-primary"/>AI Interview Questions</h3>
@@ -760,7 +761,7 @@ export function FresherFaceoffPage() {
                 </ScrollArea>
               )}
             </div>
-            
+
             <div className="relative animate-fade-in-up delay-200">
               <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70 pointer-events-none" />
               <Input
@@ -777,9 +778,9 @@ export function FresherFaceoffPage() {
                 </Button>
               )}
             </div>
-            
-            <Button 
-              onClick={handleConnect} 
+
+            <Button
+              onClick={handleConnect}
               disabled={isConnecting}
               className="w-full h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground text-lg font-semibold rounded-lg shadow-strong hover:shadow-primary/40 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.015] hover:-translate-y-0.5 active:shadow-soft animate-fade-in-up delay-300"
             >
@@ -806,15 +807,15 @@ export function FresherFaceoffPage() {
               </div>
             </div>
 
-            <Button 
-              onClick={handleCreateInterview} 
-              variant="outline" 
+            <Button
+              onClick={handleCreateInterview}
+              variant="outline"
               className="w-full h-14 text-lg border-border/70 hover:bg-secondary/80 hover:text-secondary-foreground rounded-lg shadow-soft hover:shadow-accent/30 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.015] hover:-translate-y-0.5 active:shadow-inner-soft hover:border-accent/70 animate-fade-in-up delay-400"
             >
               <Sparkles className="mr-2.5 h-5 w-5 text-primary" /> Create New Interview
             </Button>
           </CardContent>
-          
+
           <CardFooter className="p-0 pt-8 animate-fade-in-up delay-500">
             <p className="text-xs text-muted-foreground/80 text-center flex items-center justify-center w-full">
               <Info className="h-4 w-4 mr-1.5 inline-block flex-shrink-0 text-primary/80"/>
@@ -829,7 +830,7 @@ export function FresherFaceoffPage() {
 
   return (
     <TooltipProvider delayDuration={150}>
-    <div ref={mainLayoutRef} className="flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground">
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground">
       <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20">
         <div className={cn("group flex items-center gap-2.5 animate-slide-in-left-smooth")}>
           <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg animate-shine">
@@ -862,7 +863,7 @@ export function FresherFaceoffPage() {
             </Tooltip>
             <div className="hidden md:flex items-center gap-2">
                 <span className="text-muted-foreground text-sm mx-1">|</span>
-                <span className="text-muted-foreground text-sm">ID:</span> 
+                <span className="text-muted-foreground text-sm">ID:</span>
                 <Badge variant="secondary" className="font-mono text-sm tracking-wider py-1 px-2.5 shadow-sm">{interviewId.replace("FF-NEW-", "FF-")}</Badge>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -919,9 +920,9 @@ export function FresherFaceoffPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col lg:flex-row gap-3.5 p-3.5 overflow-hidden bg-background/80">
-        <div className="flex flex-col gap-3.5 lg:w-1/3 xl:w-1/4 animate-fade-in-up delay-150">
-          <Card className="aspect-video overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative">
+      <main className="flex-1 flex flex-col md:flex-row gap-3.5 p-3.5 overflow-hidden bg-background/80">
+        <div className="flex md:flex-col gap-3.5 w-full md:w-1/3 lg:w-1/4 xl:w-1/5 animate-fade-in-up delay-150 order-2 md:order-1 overflow-y-auto">
+          <Card className="flex-1 aspect-video md:aspect-auto md:h-1/2 overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative">
             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40 flex flex-row justify-between items-center">
               <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
                 <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
@@ -933,7 +934,7 @@ export function FresherFaceoffPage() {
                   {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
                </div>
             </CardHeader>
-            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]"> 
+            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]">
               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
               {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
@@ -947,7 +948,7 @@ export function FresherFaceoffPage() {
                     {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
                 </div>
               )}
-               {hasCameraPermission === null && !isScreenShared && ( 
+               {hasCameraPermission === null && !isScreenShared && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
                    <p className="text-xs text-muted-foreground">Checking camera...</p>
@@ -955,7 +956,7 @@ export function FresherFaceoffPage() {
                )}
             </CardContent>
           </Card>
-          <Card className="aspect-video overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative">
+          <Card className="flex-1 aspect-video md:aspect-auto md:h-1/2 overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative">
              <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
               <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
                 <Users className="w-4.5 h-4.5" /> Peer
@@ -976,9 +977,9 @@ export function FresherFaceoffPage() {
           </Card>
         </div>
 
-        <Card className="flex-1 lg:w-2/3 xl:w-3/4 flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-100px)] lg:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250">
+        <Card className="flex-1 md:w-2/3 lg:w-3/4 xl:w-4/5 flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-100px)] md:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250 order-1 md:order-2">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
-              <TabsList className="grid w-full grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
                 <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
                     <MessageSquare className="h-4 w-4"/> Chat
                 </TabsTrigger>
@@ -988,15 +989,15 @@ export function FresherFaceoffPage() {
                 <TabsTrigger value="notes" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
                     <FileText className="h-4 w-4"/> Notes
                 </TabsTrigger>
-                <TabsTrigger value="feedback" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
+                <TabsTrigger value="feedback" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
                     <Bot className="h-4 w-4"/> AI Coach
                 </TabsTrigger>
-                <TabsTrigger value="resources" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
+                <TabsTrigger value="resources" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
                     <Lightbulb className="h-4 w-4"/> Resources
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="chat" className="flex-1 flex flex-col m-0">
+              <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
                 <ScrollArea className="flex-1 p-3.5 bg-background/50" viewportRef={chatScrollAreaRef}>
                   <div className="space-y-4">
                     {messages.map((msg) => (
@@ -1024,9 +1025,9 @@ export function FresherFaceoffPage() {
                             className={cn("p-3 px-3.5 rounded-xl shadow-lg",
                               msg.sender === "me"
                                 ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-br-xl"
-                                : msg.sender === "ai" 
+                                : msg.sender === "ai"
                                 ? "bg-accent/15 text-accent-foreground border border-accent/40 rounded-bl-xl shadow-accent/10"
-                                : "bg-card text-card-foreground rounded-bl-xl border border-border/60" 
+                                : "bg-card text-card-foreground rounded-bl-xl border border-border/60"
                             )}
                           >
                             <p className="break-words leading-relaxed text-sm">{msg.text}</p>
@@ -1083,7 +1084,7 @@ export function FresherFaceoffPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="questions" className="flex-1 flex flex-col m-0">
+              <TabsContent value="questions" className="flex-1 flex flex-col m-0 overflow-hidden">
                  <ScrollArea className="flex-1 p-3.5 bg-background/50">
                     {isGeneratingQuestions && (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -1129,12 +1130,12 @@ export function FresherFaceoffPage() {
                                         <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-start space-x-2">
                                             <span className="text-xs text-muted-foreground mr-2">Rate difficulty:</span>
                                             {["easy", "medium", "hard"].map(diff => (
-                                                <Button 
-                                                    key={diff} 
-                                                    variant={questionDifficulty === diff ? "default" : "outline"} 
-                                                    size="sm" 
+                                                <Button
+                                                    key={diff}
+                                                    variant={questionDifficulty === diff ? "default" : "outline"}
+                                                    size="sm"
                                                     onClick={() => handleRateQuestion(diff as "easy"|"medium"|"hard")}
-                                                    className={cn("capitalize text-xs px-2.5 py-1 h-auto rounded-md", 
+                                                    className={cn("capitalize text-xs px-2.5 py-1 h-auto rounded-md",
                                                         questionDifficulty === diff && (diff === "easy" ? "bg-green-500/80 hover:bg-green-500/90 border-green-500/80 text-white" : diff === "medium" ? "bg-yellow-500/80 hover:bg-yellow-500/90 border-yellow-500/80 text-white" : "bg-red-500/80 hover:bg-red-500/90 border-red-500/80 text-white"),
                                                         questionDifficulty !== diff && "border-border/50 hover:border-primary/70"
                                                     )}
@@ -1150,10 +1151,10 @@ export function FresherFaceoffPage() {
                     )}
                  </ScrollArea>
               </TabsContent>
-              
-              <TabsContent value="notes" className="flex-1 flex flex-col m-0">
+
+              <TabsContent value="notes" className="flex-1 flex flex-col m-0 overflow-hidden">
                 <ScrollArea className="flex-1 p-0.5 bg-background/50">
-                    <Textarea 
+                    <Textarea
                         placeholder="Your private notes for the interview... (Only visible to you)"
                         value={userNotes}
                         onChange={(e) => setUserNotes(e.target.value)}
@@ -1165,7 +1166,7 @@ export function FresherFaceoffPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="feedback" className="flex-1 flex flex-col m-0">
+              <TabsContent value="feedback" className="flex-1 flex flex-col m-0 overflow-hidden">
                  <ScrollArea className="flex-1 p-3.5 bg-background/50">
                     <div className="space-y-4">
                         <Button onClick={handleGetAiFeedback} disabled={showAiFeedbackProcessing} className="w-full h-11 text-base font-medium bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity rounded-lg shadow-lg hover:shadow-primary/30">
@@ -1198,7 +1199,7 @@ export function FresherFaceoffPage() {
                     </div>
                  </ScrollArea>
               </TabsContent>
-              <TabsContent value="resources" className="flex-1 flex flex-col m-0">
+              <TabsContent value="resources" className="flex-1 flex flex-col m-0 overflow-hidden">
                 <ScrollArea className="flex-1 p-3.5 bg-background/50">
                     <div className="space-y-4">
                         <Card className="p-4 bg-card/90 border-primary/40 shadow-lg">
@@ -1249,25 +1250,25 @@ export function FresherFaceoffPage() {
         ].map(control => (
           <Tooltip key={control.id}>
             <TooltipTrigger asChild>
-              <Button 
-                variant={control.destructive && control.active && !control.main ? "destructive" : 
-                         control.main ? "destructive" : 
-                         control.specialActive ? "default" : 
+              <Button
+                variant={control.destructive && control.active && !control.main ? "destructive" :
+                         control.main ? "destructive" :
+                         control.specialActive ? "default" :
                          control.active ? "secondary" : "outline"}
-                size={control.main ? "lg" : "default"} 
-                onClick={control.action} 
+                size={control.main ? "lg" : "default"}
+                onClick={control.action}
                 disabled={control.disabled}
                 className={cn(
-                  "rounded-full p-0 aspect-square", 
+                  "rounded-full p-0 aspect-square",
                   control.main ? "w-16 h-16 sm:w-[70px] sm:h-[70px] text-lg" : "w-12 h-12 sm:w-14 sm:h-14 text-base",
-                  "shadow-xl hover:shadow-2xl transition-all duration-200 active:scale-90 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.04] hover:-translate-y-1 focus:ring-offset-background", 
+                  "shadow-xl hover:shadow-2xl transition-all duration-200 active:scale-90 focus:ring-2 focus:ring-offset-2 transform hover:scale-[1.04] hover:-translate-y-1 focus:ring-offset-background",
                   control.main ? "bg-destructive hover:bg-destructive/85 focus:ring-destructive/60" :
-                  control.destructive && control.active ? "bg-destructive hover:bg-destructive/85 text-destructive-foreground focus:ring-destructive/60" 
-                    : control.specialActive ? "bg-primary hover:bg-primary/85 text-primary-foreground focus:ring-primary/60" 
-                    : control.active ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring/60" 
+                  control.destructive && control.active ? "bg-destructive hover:bg-destructive/85 text-destructive-foreground focus:ring-destructive/60"
+                    : control.specialActive ? "bg-primary hover:bg-primary/85 text-primary-foreground focus:ring-primary/60"
+                    : control.active ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring/60"
                     : "border-border/70 hover:border-primary/80 focus:ring-ring/60 hover:bg-secondary/60 text-foreground",
                   control.disabled && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl"
-                )} 
+                )}
                 aria-label={control.label}
               >
                 <control.Icon className={control.main ? "h-7 w-7 sm:h-8 sm:w-8" : "h-5.5 w-5.5 sm:h-6 sm:w-6"} />
