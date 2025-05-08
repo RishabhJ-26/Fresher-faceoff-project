@@ -148,6 +148,34 @@
     animation: scale-in 0.4s cubic-bezier(0.175, 0.885, 0.320, 1.175) forwards;
   }
 
+  .animate-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .animate-shine::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -75%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(
+      to right,
+      hsla(0, 0%, 100%, 0) 0%,
+      hsla(0, 0%, 100%, 0.08) 30%,
+      hsla(0, 0%, 100%, 0.15) 50%,
+      hsla(0, 0%, 100%, 0.08) 70%,
+      hsla(0, 0%, 100%, 0) 100%
+    );
+    transform: skewX(-25deg);
+    animation: shine-animation 5s infinite linear; /* Slower and smoother */
+    opacity: 0; /* Start invisible */
+    transition: opacity 0.3s ease-in-out;
+  }
+  .group:hover .animate-shine::after, .animate-shine:hover::after {
+    opacity: 1; /* Make shine visible on hover over group or self */
+  }
+
 
   .delay-100 { animation-delay: 100ms; }
   .delay-150 { animation-delay: 150ms; }
@@ -240,5 +268,23 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes shine-animation {
+  0% {
+    transform: translateX(-200%) skewX(-25deg); /* Start further left */
+    opacity: 0;
+  }
+  20% { 
+    opacity: 0.7; /* Fade in faster */
+  }
+  60% {
+    transform: translateX(200%) skewX(-25deg); /* Move across */
+    opacity: 0.2; /* Fade out slower */
+  }
+  100% {
+    transform: translateX(200%) skewX(-25deg); /* Ensure it's off-screen */
+    opacity: 0;
   }
 }
