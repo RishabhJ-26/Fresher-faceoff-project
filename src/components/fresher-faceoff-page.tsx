@@ -481,58 +481,64 @@ export function FresherFaceoffPage() {
 
   const toggleVideo = async () => {
     if (isScreenShared) {
-      await toggleShareScreen();
+      // If screen sharing, this button should ideally switch back to camera.
+      // For simplicity now, it just stops screen share and might start camera if not already off.
+      await toggleShareScreen(); // This will attempt to revert to camera.
       return;
     }
 
     const newVideoOffState = !isVideoOff;
     setIsVideoOff(newVideoOffState);
 
-    if (localStreamRef.current) {
+    if (localStreamRef.current) { // If camera stream exists
         localStreamRef.current.getVideoTracks().forEach(track => {
           track.enabled = !newVideoOffState;
         });
-        if (localVideoRef.current) {
+        if (localVideoRef.current) { // Make sure video element reflects stream
           localVideoRef.current.srcObject = localStreamRef.current;
         }
-    } else if (!newVideoOffState) {
+    } else if (!newVideoOffState) { // If no camera stream and trying to turn ON video
         const stream = await startCameraStream();
-        if(!stream) setIsVideoOff(true);
+        if(!stream) setIsVideoOff(true); // If failed to start, keep it off
     }
+    // If turning video OFF and stream exists, tracks are disabled above.
+    // If turning video OFF and no stream, it's already effectively off.
 
     toast({ title: newVideoOffState ? "Camera Off" : "Camera On"});
   };
 
 
 const toggleShareScreen = async () => {
-    if (!isScreenShared) {
-        if (localStreamRef.current) {
+    if (!isScreenShared) { // Start screen share
+        // Temporarily disable camera video tracks if they exist and are enabled
+        if (localStreamRef.current && !isVideoOff) {
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
         const stream = await startScreenShareStream();
         if (stream) {
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
-        } else {
-           if (localStreamRef.current) {
-              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
+        } else { // Failed to start screen share, re-enable camera if it was on
+           if (localStreamRef.current && !isVideoOff) {
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = true);
               if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-           } else if (!isVideoOff) {
-             await startCameraStream(false);
+           } else if (!localStreamRef.current && !isVideoOff){ // If no stream and video was supposed to be on
+             await startCameraStream(false); // Attempt to restart camera
            }
         }
-    } else {
+    } else { // Stop screen share
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach(track => track.stop());
             screenStreamRef.current = null;
         }
         setIsScreenShared(false);
 
-        if (localStreamRef.current) {
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
+        // Re-enable camera video tracks if they exist and video wasn't manually turned off
+        if (localStreamRef.current && !isVideoOff) {
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = true);
             if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-        } else if (!isVideoOff) {
-            await startCameraStream(false);
-        } else if (isVideoOff && localVideoRef.current) {
+        } else if (!localStreamRef.current && !isVideoOff) { // If no stream and video was supposed to be on
+            await startCameraStream(false); // Attempt to restart camera
+        } else if (isVideoOff && localVideoRef.current) { // If video was manually off, ensure video element is blank
             localVideoRef.current.srcObject = null;
         }
         toast({ title: "Screen Sharing Stopped", description: "You are no longer sharing your screen." });
@@ -950,43 +956,12 @@ const toggleShareScreen = async () => {
         </header>
 
       <main className={cn(
-        "flex flex-col md:flex-row flex-1 gap-3.5 p-3.5 overflow-hidden",
-        isFullscreen ? "pt-[70px] pb-[86px]" : "pt-0 pb-0",
-        "bg-background/80"
+        "flex flex-1 gap-3.5 p-3.5 overflow-hidden bg-background/80",
+        isFullscreen ? "pt-[70px] pb-[86px]" : "pt-0 pb-0" // Adjust padding for fixed header/footer in fullscreen
       )}>
-        {/* Video Area (Left/Top on Mobile, Left on Desktop) */}
-        <div className={cn(
-            "flex flex-col gap-3.5 animate-fade-in-up delay-100 overflow-hidden",
-            isFullscreen ? "md:w-3/5 lg:w-2/3" : "md:w-2/3 lg:w-3/4", // Wider in fullscreen
-            "w-full" // Full width on mobile
-            )}>
-            {/* Peer Video (Main View) */}
-            <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
-                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-                  <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
-                    <Users className="w-4.5 h-4.5" /> Peer
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
-                   <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
-                   {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
-                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
-                        <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
-                            <AvatarImage src={`https://picsum.photos/seed/peerLarge/256/256`} alt="Peer Avatar" data-ai-hint="friendly avatar"/>
-                            <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
-                        </Avatar>
-                        <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
-                     </div>
-                   )}
-                </CardContent>
-            </Card>
-
-            {/* User Video (Smaller, Picture-in-Picture style) */}
-            <Card className={cn(
-                "overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative",
-                isFullscreen ? "h-1/4 md:h-1/3" : "h-1/3 md:h-2/5", // Adjust height based on fullscreen
-                "min-h-[150px]" // Ensure minimum height
-                )}>
+        {/* User Video (Left Column) */}
+        <div className="flex flex-col gap-3.5 w-full md:w-1/3 animate-fade-in-up delay-100 overflow-hidden">
+            <Card className="overflow-hidden shadow-xl rounded-xl border-2 border-primary/50 flex flex-col transition-all duration-300 hover:shadow-primary/40 bg-card/90 backdrop-blur-md group z-10 relative flex-1 min-h-[200px] aspect-video">
                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/30 flex flex-row justify-between items-center">
                 <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
                   <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
@@ -1003,7 +978,7 @@ const toggleShareScreen = async () => {
                  {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
                        <Avatar className={cn("w-16 h-16 shadow-md border border-primary/30", hasCameraPermission === false && "animate-pulse-gentle")}>
-                       <AvatarImage src={`https://picsum.photos/seed/myAvatarSmall/64/64`} alt="My Avatar" data-ai-hint="professional avatar"/>
+                       <AvatarImage src={`https://picsum.photos/seed/myAvatarSmall/128/128`} alt="My Avatar" data-ai-hint="professional avatar"/>
                        <AvatarFallback className="text-xl bg-primary/25 text-primary rounded-full">
                            ME
                        </AvatarFallback>
@@ -1022,12 +997,33 @@ const toggleShareScreen = async () => {
             </Card>
         </div>
 
+        {/* Peer Video (Middle Column) */}
+        <div className="flex flex-col gap-3.5 w-full md:w-1/3 animate-fade-in-up delay-200 overflow-hidden">
+            <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1 min-h-[200px] aspect-video">
+                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                  <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                    <Users className="w-4.5 h-4.5" /> Peer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px]">
+                   <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
+                   {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || remoteVideoRef.current?.srcObject?.getVideoTracks().length === 0) && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
+                        <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-lg border-2 border-accent/30">
+                            <AvatarImage src={`https://picsum.photos/seed/peerLarge/256/256`} alt="Peer Avatar" data-ai-hint="friendly avatar"/>
+                            <AvatarFallback className="text-3xl md:text-4xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
+                        </Avatar>
+                        <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
+                     </div>
+                   )}
+                </CardContent>
+            </Card>
+        </div>
 
-        {/* Chat/Tabs Panel (Right/Bottom on Mobile, Right on Desktop) */}
+        {/* Chat/Tabs Panel (Right Column) */}
         <Card className={cn(
-            "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250",
-            isFullscreen ? "md:w-2/5 lg:w-1/3" : "md:w-1/3 lg:w-1/4", // Narrower in fullscreen
-            "w-full flex-1 max-h-full overflow-hidden" // Full width, takes remaining space on mobile
+            "flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-300",
+            "w-full md:w-1/3 flex-1 max-h-full overflow-hidden"
             )}>
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
@@ -1311,7 +1307,8 @@ const toggleShareScreen = async () => {
                              control.active ? "secondary" : "outline"}
                     size={control.main ? "lg" : "default"}
                     onClick={control.action}
-                    disabled={control.id === 'video' && isScreenShared && !isVideoOff}
+                    // Disable video button if currently screen sharing, unless video is already off (then it means switch back to camera)
+                    disabled={control.id === 'video' && isScreenShared}
                     className={cn(
                       "rounded-full p-0 aspect-square",
                       control.main ? "w-16 h-16 sm:w-[70px] sm:h-[70px] text-lg" : "w-12 h-12 sm:w-14 sm:h-14 text-base",
@@ -1321,7 +1318,7 @@ const toggleShareScreen = async () => {
                         : control.specialActive ? "bg-primary hover:bg-primary/85 text-primary-foreground focus:ring-primary/60"
                         : control.active ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring/60"
                         : "border-border/70 hover:border-primary/80 focus:ring-ring/60 hover:bg-secondary/60 text-foreground",
-                      (control.id === 'video' && isScreenShared && !isVideoOff) && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl"
+                      (control.id === 'video' && isScreenShared) && "opacity-50 cursor-not-allowed hover:scale-100 hover:translate-y-0 hover:shadow-xl"
                     )}
                     aria-label={control.label}
                   >
