@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -84,10 +83,9 @@ interface Message {
   sender: "me" | "peer" | "ai";
   timestamp: Date;
   feedback?: "good" | "bad" | null;
-  reactions?: string[]; // For emojis or quick reactions
+  reactions?: string[]; 
 }
 
-// Mock "database" of active interviews
 const FAKE_ACTIVE_INTERVIEWS = new Set<string>();
 
 const INTERVIEW_CATEGORIES = [
@@ -135,7 +133,7 @@ export function FresherFaceoffPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
   const [overallFeedback, setOverallFeedback] = useState("");
   const [showAiFeedbackProcessing, setShowAiFeedbackProcessing] = useState(false);
-  const [questionDifficulty, setQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null); // New state for question difficulty
+  const [questionDifficulty, setQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null); 
 
 
   const { toast } = useToast();
@@ -178,7 +176,7 @@ export function FresherFaceoffPage() {
         localVideoRef.current.srcObject = stream;
       }
       setHasCameraPermission(true);
-      setIsVideoOff(false); // Ensure video is on when stream starts
+      setIsVideoOff(false); 
       return stream;
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -209,7 +207,10 @@ export function FresherFaceoffPage() {
         screenStreamRef.current = null;
     }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } });
+      const stream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: { cursor: "always" }, 
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } 
+      });
       screenStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
@@ -217,16 +218,15 @@ export function FresherFaceoffPage() {
       
       stream.getVideoTracks()[0].onended = () => {
         setIsScreenShared(false);
-        // Attempt to restart camera when screen share ends
         startCameraStream(false).then(camStream => {
           if (!camStream) {
-            setIsVideoOff(true); // if camera couldn't restart, set video off
+            setIsVideoOff(true); 
           }
         });
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
       setIsScreenShared(true);
-      setIsVideoOff(false); // Screen is now the video source, so video is "on"
+      setIsVideoOff(false); 
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -266,7 +266,7 @@ export function FresherFaceoffPage() {
              if(remoteVideoRef.current && (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.getTracks().length === 0)) {
                 const mockStream = new MediaStream();
                 const canvas = document.createElement('canvas');
-                canvas.width = 320; // Smaller placeholder
+                canvas.width = 320; 
                 canvas.height = 240;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
@@ -283,7 +283,6 @@ export function FresherFaceoffPage() {
              }
           }, 2000);
         } else if (!stream) {
-             // If camera stream failed on connect, show camera off state immediately
              setIsVideoOff(true);
         }
       });
@@ -296,7 +295,7 @@ export function FresherFaceoffPage() {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setIsScreenShared(false); 
       setHasCameraPermission(null);
-      setIsVideoOff(false); // Reset video off state for next connection
+      setIsVideoOff(false); 
     }
 
     return () => {
@@ -326,11 +325,9 @@ export function FresherFaceoffPage() {
   
     setIsConnecting(true);
   
-    // Check for camera permission first
-    if (hasCameraPermission === null) { // Only if not yet checked
-        const stream = await startCameraStream(false); // Check without initial error toast
+    if (hasCameraPermission === null) { 
+        const stream = await startCameraStream(false); 
         if (!stream) {
-            // hasCameraPermission will be set to false by startCameraStream
             toast({
                 variant: "destructive",
                 title: "Camera Access Recommended",
@@ -495,7 +492,6 @@ export function FresherFaceoffPage() {
   const toggleShareScreen = async () => {
     if (!isScreenShared) { 
         if(localStreamRef.current){ 
-            // Don't stop the stream, just disable tracks so it can be re-enabled later
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
         }
         if (localVideoRef.current) localVideoRef.current.srcObject = null; 
@@ -504,9 +500,8 @@ export function FresherFaceoffPage() {
         if (stream) { 
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
         } else { 
-           // If screen share failed, re-enable camera tracks if stream exists
            if(localStreamRef.current && localVideoRef.current){
-              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Respect current isVideoOff
+              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
               localVideoRef.current.srcObject = localStreamRef.current;
            } else {
              await startCameraStream(false); 
@@ -518,9 +513,8 @@ export function FresherFaceoffPage() {
             screenStreamRef.current = null;
         }
         setIsScreenShared(false);
-        // Re-enable camera tracks or restart camera after stopping screen share
         if(localStreamRef.current && localVideoRef.current){
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Respect current isVideoOff state
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
             localVideoRef.current.srcObject = localStreamRef.current;
         } else {
             await startCameraStream(false); 
@@ -709,7 +703,6 @@ export function FresherFaceoffPage() {
   };
 
 
-  // Lobby Screen (when not connected)
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan selection:bg-primary/30 selection:text-primary-foreground">
@@ -834,11 +827,9 @@ export function FresherFaceoffPage() {
     );
   }
 
-  // Connected State UI
   return (
     <TooltipProvider delayDuration={150}>
     <div ref={mainLayoutRef} className="flex flex-col h-screen bg-background text-foreground overflow-hidden antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground">
-      {/* Header Bar */}
       <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20">
         <div className={cn("group flex items-center gap-2.5 animate-slide-in-left-smooth")}>
           <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg animate-shine">
@@ -849,7 +840,6 @@ export function FresherFaceoffPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 animate-fade-in-down delay-100">
-            {/* Timer Display */}
             <div className="flex items-center gap-2 text-sm font-mono bg-muted/70 px-3 py-1.5 rounded-lg shadow-inner-soft text-foreground tabular-nums">
               <Clock className="h-4.5 w-4.5 text-primary"/>
               <span>{formatTime(timerSeconds)}</span>
@@ -929,12 +919,9 @@ export function FresherFaceoffPage() {
         </div>
       </header>
 
-      {/* Main Content Area - Adjusted layout for smaller videos and prominent chat */}
       <main className="flex-1 flex flex-col lg:flex-row gap-3.5 p-3.5 overflow-hidden bg-background/80">
-        {/* Left Panel: Video Grid */}
         <div className="flex flex-col gap-3.5 lg:w-1/3 xl:w-1/4 animate-fade-in-up delay-150">
-          {/* Local Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative flex-1">
+          <Card className="aspect-video overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-primary/30 bg-card/90 backdrop-blur-md group relative">
             <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40 flex flex-row justify-between items-center">
               <CardTitle className="text-sm font-semibold text-primary flex items-center gap-1.5">
                 <UserCircle className="w-4.5 h-4.5"/> {isScreenShared ? "Your Screen" : "You"}
@@ -946,7 +933,7 @@ export function FresherFaceoffPage() {
                   {!isVideoOff && !isScreenShared && <Video className="w-4 h-4 text-green-400" />}
                </div>
             </CardHeader>
-            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]"> {/* Adjusted mt for smaller header */}
+            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center relative mt-[41px]"> 
               <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
               {((isVideoOff && !isScreenShared) || (hasCameraPermission === false && !isScreenShared)) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
@@ -960,7 +947,7 @@ export function FresherFaceoffPage() {
                     {isVideoOff && hasCameraPermission !== false && !isScreenShared && <p className="mt-2 text-xs text-muted-foreground">Camera is Off</p>}
                 </div>
               )}
-               {hasCameraPermission === null && !isScreenShared && ( // Placeholder while checking permission
+               {hasCameraPermission === null && !isScreenShared && ( 
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm rounded-b-xl p-3 text-center">
                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
                    <p className="text-xs text-muted-foreground">Checking camera...</p>
@@ -968,8 +955,7 @@ export function FresherFaceoffPage() {
                )}
             </CardContent>
           </Card>
-          {/* Remote Video */}
-          <Card className="overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative flex-1">
+          <Card className="aspect-video overflow-hidden shadow-xl rounded-xl border-border/40 flex flex-col transition-all duration-300 hover:shadow-accent/30 bg-card/90 backdrop-blur-md group relative">
              <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
               <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
                 <Users className="w-4.5 h-4.5" /> Peer
@@ -990,7 +976,6 @@ export function FresherFaceoffPage() {
           </Card>
         </div>
 
-        {/* Right Panel: Chat, Questions, Notes, Feedback - Now takes more space */}
         <Card className="flex-1 lg:w-2/3 xl:w-3/4 flex flex-col shadow-xl rounded-xl border-border/40 max-h-[calc(100vh-100px)] lg:max-h-full transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-slide-in-right-smooth delay-250">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
@@ -1255,7 +1240,6 @@ export function FresherFaceoffPage() {
         </Card>
       </main>
 
-      {/* Footer Control Bar */}
       <footer className="bg-card/95 backdrop-blur-lg p-3 shadow-t-strong flex justify-center items-center space-x-2.5 sm:space-x-3.5 border-t border-border/50 animate-fade-in-up delay-350">
         {[
           { id: 'mute', Icon: isMuted ? MicOff : Mic, active: isMuted, action: toggleMute, label: isMuted ? "Unmute" : "Mute", destructive: isMuted },
