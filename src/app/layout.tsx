@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers/providers";
+import CustomCursor from "@/components/custom-cursor"; // Import CustomCursor
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="h-full">
       <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground`}>
         <Providers>
+          <CustomCursor /> {/* Add CustomCursor component here */}
           {children}
           <Toaster />
         </Providers>

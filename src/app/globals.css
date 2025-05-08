@@ -107,7 +107,13 @@
     width: 100%;
     margin: 0;
     padding: 0;
+    cursor: none !important; /* Hide default cursor */
   }
+
+  button, a, input, textarea, select, [role="button"], [data-interactive="true"] {
+    cursor: none !important; /* Ensure interactive elements also hide default cursor */
+  }
+
 
   * {
     border-color: hsl(var(--border));
