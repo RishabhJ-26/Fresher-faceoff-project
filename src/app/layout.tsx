@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
-      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground overflow-hidden`}>
+      <body className={`${inter.variable} font-sans antialiased h-full bg-background text-foreground`}>
         <Providers>
           <CustomCursor />
           {children}
