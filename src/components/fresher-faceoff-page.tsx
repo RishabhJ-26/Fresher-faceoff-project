@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent } from "react";
@@ -38,9 +39,6 @@ import {
   CameraOff,
   Settings2,
   HelpCircle,
-  Lightbulb,
-  FileText,
-  Brain,
   Play,
   Pause,
   RefreshCw,
@@ -49,16 +47,15 @@ import {
   ThumbsUp,
   ThumbsDown,
   UserCircle,
-  ListChecks,
-  Timer,
   Share2,
   Star,
   MessageCircleQuestion,
   Users2,
-  // Maximize,
-  // Minimize,
-  // Expand, 
-  // Shrink,
+  Maximize2,
+  Minimize2,
+  FileText,
+  Lightbulb,
+  ListChecks,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -71,8 +68,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateInterviewQuestions, type GenerateInterviewQuestionsOutput } from "@/ai/flows/generate-interview-questions-flow";
 import { Progress } from "@/components/ui/progress";
@@ -121,20 +116,13 @@ export function FresherFaceoffPage() {
   const [customTopic, setCustomTopic] = useState<string>("");
   const [generatedQuestions, setGeneratedQuestions] = useState<string[]>([]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState<boolean>(false);
-  const [userNotes, setUserNotes] = useState<string>("");
 
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"chat" | "questions" | "notes" | "feedback" | "resources">("chat");
-  const [questionTimerSeconds, setQuestionTimerSeconds] = useState(0);
-  const [isQuestionTimerRunning, setIsQuestionTimerRunning] = useState(false);
-  const questionTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
-  const [overallFeedback, setOverallFeedback] = useState("");
   const [showAiFeedbackProcessing, setShowAiFeedbackProcessing] = useState(false);
-  const [questionDifficulty, setQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
 
   const { toast } = useToast();
@@ -144,6 +132,7 @@ export function FresherFaceoffPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const mainLayoutRef = useRef<HTMLDivElement>(null);
 
 
   const stopStream = (stream: MediaStream | null) => {
@@ -218,7 +207,7 @@ export function FresherFaceoffPage() {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { cursor: "always" } as MediaTrackConstraints,
-        // audio: { suppressLocalAudioPlayback: false } as MediaTrackConstraints 
+        // audio: { suppressLocalAudioPlayback: false } as MediaTrackConstraints // Consider if needed
       });
       screenStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -226,7 +215,8 @@ export function FresherFaceoffPage() {
       }
       
       if (localStreamRef.current) {
-        localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
+        localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false); // Disable camera video
+        // Keep audio track enabled/disabled based on isMuted
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !isMuted);
       }
 
@@ -234,14 +224,14 @@ export function FresherFaceoffPage() {
         setIsScreenShared(false);
         if (localStreamRef.current && localVideoRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current;
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Re-enable camera if it wasn't off
         } else if (!localStreamRef.current && localVideoRef.current) {
             localVideoRef.current.srcObject = null; 
         }
         toast({ title: "Screen Sharing Ended", description: "You stopped sharing your screen." });
       };
       setIsScreenShared(true);
-      setIsVideoOff(false); 
+      setIsVideoOff(false); // When screen sharing, conceptually video is "on" via screen
       return stream;
     } catch (err: any) {
       console.error("Error starting screen share:", err);
@@ -292,29 +282,33 @@ export function FresherFaceoffPage() {
             } else { 
                 if (localStreamRef.current && localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
                     localVideoRef.current.srcObject = localStreamRef.current;
-                } else if (!localStreamRef.current && localVideoRef.current) {
+                } else if (!localStreamRef.current && localVideoRef.current && !isVideoOff) { // Show black if no stream and video isn't "off"
                      localVideoRef.current.srcObject = null; 
                 }
             }
 
+            // Simulate peer stream based on local actions for local display
             if (remoteVideoRef.current) {
                 if(localStreamRef.current && !isScreenShared) { 
-                    const peerStream = new MediaStream();
+                    // Create a new stream for the remoteVideoRef to avoid direct manipulation issues
+                    const peerCameraStream = new MediaStream();
                     localStreamRef.current.getAudioTracks().forEach(track => {
-                        const clonedTrack = track.clone();
-                        clonedTrack.enabled = !isMuted; 
-                        peerStream.addTrack(clonedTrack);
+                        const clonedTrack = track.clone(); // Clone to avoid stopping original
+                        clonedTrack.enabled = !isMuted; // Reflect local mute state for "peer"
+                        peerCameraStream.addTrack(clonedTrack);
                     });
                     localStreamRef.current.getVideoTracks().forEach(track => {
                        const clonedTrack = track.clone();
-                       clonedTrack.enabled = !isVideoOff; 
-                       peerStream.addTrack(clonedTrack);
+                       clonedTrack.enabled = !isVideoOff; // Reflect local video state for "peer"
+                       peerCameraStream.addTrack(clonedTrack);
                     });
-                    if (remoteVideoRef.current.srcObject !== peerStream) { 
-                         remoteVideoRef.current.srcObject = peerStream;
+                    // Only update if the stream reference changes or tracks change significantly
+                    if (remoteVideoRef.current.srcObject !== peerCameraStream ) { // Basic check, might need more sophisticated for track changes
+                         remoteVideoRef.current.srcObject = peerCameraStream;
                     }
                 } else if (screenStreamRef.current && isScreenShared) { 
-                    const peerScreenStream = new MediaStream();
+                     const peerScreenStream = new MediaStream();
+                     // If camera audio is active during screen share, add it
                      if(localStreamRef.current) { 
                         localStreamRef.current.getAudioTracks().forEach(track => {
                             const clonedTrack = track.clone();
@@ -322,20 +316,21 @@ export function FresherFaceoffPage() {
                             peerScreenStream.addTrack(clonedTrack);
                         });
                      }
+                     // Add screen video
                      screenStreamRef.current.getVideoTracks().forEach(track => {
                         const clonedTrack = track.clone();
-                        clonedTrack.enabled = true;
+                        clonedTrack.enabled = true; // Screen video is always "on" if sharing
                         peerScreenStream.addTrack(clonedTrack);
                      });
                      if(remoteVideoRef.current.srcObject !== peerScreenStream) {
                         remoteVideoRef.current.srcObject = peerScreenStream;
                      }
 
-                } else { 
+                } else { // No local stream to mirror (e.g. video off, not screen sharing)
                     remoteVideoRef.current.srcObject = null;
                 }
             }
-        } else { 
+        } else { // Not connected
             stopStream(localStreamRef.current); localStreamRef.current = null;
             stopStream(screenStreamRef.current); screenStreamRef.current = null;
             if (localVideoRef.current) localVideoRef.current.srcObject = null;
@@ -348,6 +343,9 @@ export function FresherFaceoffPage() {
 
     return () => {
         isMounted = false;
+        // Optional: Stop streams on component unmount if not already handled by handleDisconnect
+        // stopStream(localStreamRef.current);
+        // stopStream(screenStreamRef.current);
     };
   }, [isConnected, isScreenShared, isMuted, isVideoOff, startCameraStream, hasCameraPermission]);
 
@@ -372,20 +370,26 @@ export function FresherFaceoffPage() {
     }
     setIsConnecting(true);
     
+    // Attempt to start camera stream without showing error yet, 
+    // to check permission before "connecting"
     await startCameraStream(false); 
     
+    // If permission is denied and video is not intentionally off, show a heads-up.
     if (hasCameraPermission === false && !isVideoOff) { 
         toast({
-            variant: "default", 
+            variant: "default", // Use default or a less intrusive variant
             title: "Camera Access Recommended",
             description: "Camera access is denied or unavailable. Some features might be limited. You can enable it in browser settings.",
             duration: 7000,
         });
     }
 
+    // Simulate connection delay
     setTimeout(() => {
+      // Normalize ID for checking/setting in FAKE_ACTIVE_INTERVIEWS
       const effectiveId = interviewId.startsWith("FF-NEW-") ? interviewId.replace("FF-NEW-", "FF-") : interviewId;
 
+      // If joining an existing ID, check if it's "active" (mocked)
       if (!FAKE_ACTIVE_INTERVIEWS.has(effectiveId) && !interviewId.startsWith("FF-NEW-")) {
          toast({
            variant: "destructive",
@@ -405,9 +409,9 @@ export function FresherFaceoffPage() {
       setIsConnecting(false);
       let currentId = interviewId;
       if (interviewId.startsWith("FF-NEW-")) {
-          currentId = effectiveId;
-          FAKE_ACTIVE_INTERVIEWS.add(currentId);
-          setInterviewId(currentId);
+          currentId = effectiveId; // Use the normalized ID
+          FAKE_ACTIVE_INTERVIEWS.add(currentId); // Add normalized ID to active set
+          setInterviewId(currentId); // Update state to normalized ID
           toast({
             title: "Interview Created & Joined!",
             description: (
@@ -428,7 +432,7 @@ export function FresherFaceoffPage() {
 
   const handleCreateInterview = () => {
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newId = `FF-NEW-${randomPart}`;
+    const newId = `FF-NEW-${randomPart}`; // Internal "new" marker
     setInterviewId(newId);
     toast({
       title: "New Interview ID Generated!",
@@ -440,7 +444,7 @@ export function FresherFaceoffPage() {
       ),
       duration: 8000,
     });
-    navigator.clipboard.writeText(newId.replace("FF-NEW-","FF-"));
+    navigator.clipboard.writeText(newId.replace("FF-NEW-","FF-")); // Copy the user-facing ID
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
@@ -450,20 +454,15 @@ export function FresherFaceoffPage() {
     setMessages([]);
     const effectiveId = interviewId.replace("FF-NEW-", "FF-");
     FAKE_ACTIVE_INTERVIEWS.delete(effectiveId);
-    setInterviewId(""); 
+    // setInterviewId(""); // Keep interviewId if you want them to see it post-disconnect, or clear it
+    
     toast({ title: "Disconnected", description: "You have left the interview session." });
 
     setIsTimerRunning(false);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     setTimerSeconds(0);
 
-    setIsQuestionTimerRunning(false);
-    if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current);
-    setQuestionTimerSeconds(0);
-    setCurrentQuestionIndex(null);
-    setOverallFeedback("");
     setShowAiFeedbackProcessing(false);
-    setActiveTab("chat");
 
     stopStream(localStreamRef.current); localStreamRef.current = null;
     stopStream(screenStreamRef.current); screenStreamRef.current = null;
@@ -471,7 +470,8 @@ export function FresherFaceoffPage() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     
     setIsScreenShared(false);
-    setHasCameraPermission(null); 
+    // Reset camera permission status to allow re-check on next connection attempt
+    // setHasCameraPermission(null); // Or keep it if you prefer not to re-prompt immediately
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
@@ -482,21 +482,22 @@ export function FresherFaceoffPage() {
         text: messageText,
         sender: sender,
         timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined,
+        feedback: sender === "ai" ? null : undefined, // Only AI messages can have feedback
       };
       setMessages(prevMessages => [...prevMessages, newMsg]);
 
       if (sender === "me") {
+        // Simulate peer response
         setTimeout(() => {
           const peerResponse: Message = {
             id: `msg-${Date.now() + 1}-${Math.random()}`,
-            text: `Received: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`,
+            text: `Received: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`, // Mock response
             sender: "peer",
             timestamp: new Date()
           };
           setMessages(prev => [...prev, peerResponse]);
         }, 800);
-        setNewMessage("");
+        setNewMessage(""); // Clear input after sending
       }
     }
   };
@@ -507,77 +508,92 @@ export function FresherFaceoffPage() {
     if (localStreamRef.current) {
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     }
-    // if (isScreenShared && screenStreamRef.current) { // Also mute/unmute screen share audio if it exists
+    // If screen sharing and audio is part of screen share (though typically not by default with getDisplayMedia for audio from screen)
+    // if (isScreenShared && screenStreamRef.current && screenStreamRef.current.getAudioTracks().length > 0) {
     //     screenStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     // }
     toast({ title: newMutedState ? "Microphone Muted" : "Microphone Unmuted"});
   };
 
 const toggleVideo = async () => {
+    // If currently screen sharing, this button should stop screen share and revert to camera
     if (isScreenShared) { 
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
-        setIsScreenShared(false); 
+        setIsScreenShared(false); // Crucial: update state
         
-        const newVideoOffStateAfterScreenShare = isVideoOff; 
-        setIsVideoOff(newVideoOffStateAfterScreenShare);
+        const newVideoOffStateAfterScreenShare = isVideoOff; // Preserve the intended camera state
+        setIsVideoOff(newVideoOffStateAfterScreenShare); // This might seem redundant but clarifies intent
 
-        if (!newVideoOffStateAfterScreenShare) { 
-            const stream = await startCameraStream(false); 
+        if (!newVideoOffStateAfterScreenShare) { // If camera was intended to be ON
+            const stream = await startCameraStream(false); // Attempt to restart camera
             if (stream) {
                 toast({ title: "Screen Share Stopped, Camera On" });
             } else {
+                // Camera failed to start, ensure video is marked as off
                 toast({ title: "Screen Share Stopped, Camera Failed to Start", description: "Camera might be off or permission denied." });
-                setIsVideoOff(true); 
+                setIsVideoOff(true); // Force video off if camera start failed
             }
-        } else { 
+        } else { // If camera was intended to be OFF
              toast({ title: "Screen Share Stopped", description: "Camera remains off." });
+             // Ensure local camera video tracks are disabled if the stream exists
              if (localStreamRef.current) { 
                 localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
              }
+             // If local stream (camera) exists, set it to video ref, its tracks will be disabled.
+             // If not, video ref should be null.
              if(localVideoRef.current && localStreamRef.current) localVideoRef.current.srcObject = localStreamRef.current; 
              else if (localVideoRef.current) localVideoRef.current.srcObject = null;
         }
-        return;
+        return; // Exit after handling screen share stop
     }
 
+    // Standard camera toggle logic
     const newVideoOffState = !isVideoOff;
     setIsVideoOff(newVideoOffState);
 
-    if (!newVideoOffState) { 
+    if (!newVideoOffState) { // Turning camera ON
         const stream = await startCameraStream(false);
         if (stream) {
-            if (localVideoRef.current && localStreamRef.current) { 
+            // Ensure stream is correctly assigned and tracks enabled
+            if (localVideoRef.current && localStreamRef.current) { // Redundant check given startCameraStream logic, but safe
                 localVideoRef.current.srcObject = localStreamRef.current;
                 localStreamRef.current.getVideoTracks().forEach(track => track.enabled = true);
             }
             toast({ title: "Camera On" });
         } else {
+            // Failed to turn camera on, revert state
             toast({ variant: "destructive", title:"Camera Failed", description: "Could not start camera. Check permissions."});
-            setIsVideoOff(true); 
+            setIsVideoOff(true); // Revert to off state
         }
-    } else { 
+    } else { // Turning camera OFF
          if (localStreamRef.current) {
              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
          }
+         // No need to set localVideoRef.current.srcObject to null if stream still exists
+         // The tracks being disabled will handle the visual (black screen or avatar)
          toast({ title: "Camera Off" });
     }
 };
 
 
 const toggleShareScreen = async () => {
-    if (!isScreenShared) { 
-        const stream = await startScreenShareStream(); 
+    if (!isScreenShared) { // Start screen share
+        const stream = await startScreenShareStream(); // This internally sets isScreenShared and handles streams
         if (stream) {
             toast({ title: "Screen Sharing Started", description: "You are now sharing your screen." });
         }
-    } else { 
+        // If stream is null, startScreenShareStream already showed a toast
+    } else { // Stop screen share
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
         setIsScreenShared(false);
+        // Revert to camera stream if it exists and camera wasn't turned off
         if (localStreamRef.current && localVideoRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current; // Revert to camera stream
-            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); // Respect original video state
+            localVideoRef.current.srcObject = localStreamRef.current; 
+            localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
+        } else if (localVideoRef.current) {
+            localVideoRef.current.srcObject = null; // Clear if no camera stream
         }
         toast({ title: "Screen Sharing Stopped" });
     }
@@ -605,13 +621,13 @@ const toggleShareScreen = async () => {
     }
 
     setIsGeneratingQuestions(true);
-    setGeneratedQuestions([]);
+    setGeneratedQuestions([]); // Clear previous questions
     try {
       const topic = interviewCategory === "Custom Topic" ? customTopic : interviewCategory;
       const result: GenerateInterviewQuestionsOutput = await generateInterviewQuestions({ topic, numQuestions: 5 });
       setGeneratedQuestions(result.questions);
       if (result.questions.length > 0 && !result.questions[0].startsWith("Error:")) {
-        toast({ title: "AI Questions Generated!", description: `Found ${result.questions.length} questions for "${topic}". Check the 'Questions' tab after joining.` });
+        toast({ title: "AI Questions Generated!", description: `Found ${result.questions.length} questions for "${topic}".` });
       } else if (result.questions.length > 0 && result.questions[0].startsWith("Error:")) {
         toast({ variant: "destructive", title: "AI Question Generation Failed", description: result.questions[0]});
       } else {
@@ -620,7 +636,7 @@ const toggleShareScreen = async () => {
     } catch (error: any) {
       console.error("Error generating questions:", error);
       toast({ variant: "destructive", title: "Error Generating Questions", description: error.message || "An unexpected error occurred." });
-      setGeneratedQuestions(["Failed to load questions. Please try again."]);
+      setGeneratedQuestions(["Failed to load questions. Please try again."]); // Show error in the list
     } finally {
       setIsGeneratingQuestions(false);
     }
@@ -655,37 +671,6 @@ const toggleShareScreen = async () => {
     setTimerSeconds(0);
   };
 
-  useEffect(() => {
-    if (isQuestionTimerRunning) {
-      questionTimerIntervalRef.current = setInterval(() => {
-        setQuestionTimerSeconds(prevSeconds => prevSeconds + 1);
-      }, 1000);
-    } else {
-      if (questionTimerIntervalRef.current) {
-        clearInterval(questionTimerIntervalRef.current);
-      }
-    }
-    return () => {
-      if (questionTimerIntervalRef.current) {
-        clearInterval(questionTimerIntervalRef.current);
-      }
-    };
-  }, [isQuestionTimerRunning]);
-
-  const handleStartQuestionTimer = (index: number) => {
-    setCurrentQuestionIndex(index);
-    setQuestionTimerSeconds(0);
-    setIsQuestionTimerRunning(true);
-    toast({ title: "Question Timer Started", description: `Timing for question ${index + 1}.`});
-  };
-
-  const handleStopQuestionTimer = () => {
-    setIsQuestionTimerRunning(false);
-    if (currentQuestionIndex !== null) {
-        handleSendMessage(`Finished question ${currentQuestionIndex + 1}. Time taken: ${formatTime(questionTimerSeconds)}`, "ai");
-    }
-    setCurrentQuestionIndex(null);
-  };
 
   const handleMessageFeedback = (messageId: string, feedback: "good" | "bad") => {
     setMessages(prevMessages =>
@@ -704,11 +689,9 @@ const toggleShareScreen = async () => {
     setShowAiFeedbackProcessing(true);
     setTimeout(() => {
       const feedbackText = `Overall, the interview interaction showed good potential. Key strengths include clear communication and relevant questions. Areas for improvement could be to elaborate more on answers and to ask more follow-up questions to dive deeper into topics. The pacing was generally good. Remember to maintain eye contact and show enthusiasm!`;
-      setOverallFeedback(feedbackText);
-      handleSendMessage(feedbackText, "ai");
-      setActiveTab("feedback");
+      handleSendMessage(feedbackText, "ai"); // Send feedback to chat
       setShowAiFeedbackProcessing(false);
-      toast({ title: "AI Feedback Generated!", description: "Check the 'Feedback' tab for insights." });
+      toast({ title: "AI Feedback Generated!", description: "Check the chat for insights." });
     }, 2500);
   };
 
@@ -718,31 +701,54 @@ const toggleShareScreen = async () => {
       navigator.share({
         title: 'Join My Fresher Faceoff Interview!',
         text: `Let's practice! Join my Fresher Faceoff interview with ID: ${idToShare}`,
-        url: window.location.href,
+        url: window.location.href, // Or a specific join link if you have one
       })
       .then(() => toast({ title: "Shared!", description: "Interview details sent."}))
       .catch((error) => {
         console.error('Error sharing:', error);
-        handleCopyInterviewId();
+        handleCopyInterviewId(); // Fallback to copy
         toast({title: "Share Failed, ID Copied", description: "Could not use share. Interview ID copied to clipboard instead."});
       });
     } else {
-      handleCopyInterviewId();
+      handleCopyInterviewId(); // Fallback for browsers without navigator.share
       toast({title: "Copied for Sharing", description: "Interview ID copied. Please paste it to your peer."});
     }
   };
 
-  const handleRateQuestion = (difficulty: "easy" | "medium" | "hard") => {
-    setQuestionDifficulty(difficulty);
-    toast({ title: "Question Rated", description: `You rated this question as ${difficulty}.` });
-  };
 
   const handleSettingsAction = (action: string) => {
+    // Placeholder for actual settings logic
     toast({
       title: "Settings Action",
       description: `${action} feature is not yet implemented.`,
     });
   };
+
+  const toggleFullScreen = useCallback(() => {
+    if (!mainLayoutRef.current) return;
+
+    if (!isFullScreen) {
+      if (mainLayoutRef.current.requestFullscreen) {
+        mainLayoutRef.current.requestFullscreen().catch(err => {
+          toast({variant: "destructive", title: "Fullscreen Error", description: `Could not enter fullscreen mode: ${err.message}`});
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => {
+           toast({variant: "destructive", title: "Fullscreen Error", description: `Could not exit fullscreen mode: ${err.message}`});
+        });
+      }
+    }
+  }, [isFullScreen, toast]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
 
   if (!isConnected) {
@@ -752,7 +758,7 @@ const toggleShareScreen = async () => {
           <CardHeader className="text-center p-0 mb-8">
              <div className={cn(
                 "group mx-auto mb-6 p-3.5 bg-gradient-to-tr from-primary via-accent to-primary/70 rounded-full w-fit shadow-xl shadow-primary/30 transform transition-all hover:scale-105 duration-300",
-                "animate-shine"
+                "animate-shine" // Added shine animation
               )}>
               <Users2 className="h-16 w-16 sm:h-20 sm:w-20 text-primary-foreground" />
             </div>
@@ -766,7 +772,7 @@ const toggleShareScreen = async () => {
 
           <CardContent className="space-y-6 p-0">
             <div className="space-y-3 p-4 border border-border/30 rounded-xl bg-background/60 shadow-sm animate-fade-in-up delay-100 hover:shadow-md transition-shadow duration-300">
-              <h3 className="text-base font-semibold text-foreground flex items-center"><Brain className="w-5 h-5 mr-2.5 text-primary"/>AI Interview Questions</h3>
+              <h3 className="text-base font-semibold text-foreground flex items-center"><Sparkles className="w-5 h-5 mr-2.5 text-primary"/>AI Interview Questions</h3>
               <Select value={interviewCategory} onValueChange={setInterviewCategory}>
                 <SelectTrigger className="w-full h-12 text-sm bg-input border-input hover:border-primary/70 focus:border-primary focus-visible:ring-primary focus-visible:ring-2 rounded-lg shadow-inner-soft placeholder:text-muted-foreground/60">
                   <SelectValue placeholder="Select Interview Category/Topic" />
@@ -822,7 +828,7 @@ const toggleShareScreen = async () => {
 
             <Button
               onClick={handleConnect}
-              disabled={isConnecting}
+              disabled={isConnecting || (!interviewId && !interviewId.startsWith("FF-NEW-"))} // Disable if no ID unless it's a new one being created
               className="w-full h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground text-lg font-semibold rounded-lg shadow-strong hover:shadow-primary/40 transition-all duration-300 ease-out active:scale-95 transform hover:scale-[1.015] hover:-translate-y-0.5 active:shadow-soft animate-fade-in-up delay-300"
             >
               {isConnecting ? (
@@ -871,10 +877,13 @@ const toggleShareScreen = async () => {
 
   return (
     <TooltipProvider delayDuration={150}>
-    <div className="flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden">
+    <div ref={mainLayoutRef} className={cn("flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden", isFullScreen && "bg-background")}>
         <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20 shrink-0">
           <div className="group flex items-center gap-2.5 animate-slide-in-left-smooth">
-            <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg animate-shine">
+            <div className={cn(
+                "p-2 bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg",
+                 "animate-shine" // Added shine animation
+                )}>
               <Users2 className="h-7 w-7 text-primary-foreground"/>
             </div>
             <h1 className="text-xl font-bold tracking-tight hidden sm:block bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[200%_auto] animate-gradient-text">
@@ -923,6 +932,14 @@ const toggleShareScreen = async () => {
                     <TooltipContent><p>Share Interview</p></TooltipContent>
                 </Tooltip>
               </div>
+               <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={toggleFullScreen} className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md">
+                    {isFullScreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</p></TooltipContent>
+              </Tooltip>
           </div>
           <div className="flex items-center gap-2 animate-slide-in-right-smooth">
               <DropdownMenu>
@@ -953,332 +970,190 @@ const toggleShareScreen = async () => {
           </div>
         </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-3 gap-3.5 p-3.5 flex-1 overflow-hidden">
-        {/* Local Video - Column 1 */}
-        <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up overflow-hidden min-h-0">
-            <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+      <main className={cn(
+          "grid grid-cols-1 md:grid-cols-3 gap-3.5 p-3.5 flex-1 overflow-hidden",
+           isFullScreen ? "grid-cols-1 md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px]" : "grid-cols-1 md:grid-cols-3"
+        )}>
+        
+        {/* Video Area - Spans 2 columns in normal, 1 in fullscreen */}
+        <div className={cn(
+            "grid gap-3.5",
+            isFullScreen ? "grid-rows-2 md:grid-rows-1 md:grid-cols-2" : "md:col-span-2 grid grid-rows-1 md:grid-rows-2 grid-cols-1 md:grid-cols-1" 
+          )}>
+            {/* Remote Video (Peer) - Takes full width in single column or top in two rows */}
+            <div className={cn(
+                "relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-150 overflow-hidden min-h-0",
+                 isFullScreen ? "md:col-span-2 md:row-span-1" : "md:row-span-1"
+                )}>
+                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                  <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                    <Users className="w-4.5 h-4.5" /> Peer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+                   <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl aspect-video"></video>
+                   {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || (remoteVideoRef.current?.srcObject && remoteVideoRef.current.srcObject.getVideoTracks().every(t => !t.enabled || t.muted))) && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
+                        <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-lg border-2 border-accent/30 animate-pulse-gentle">
+                            <AvatarImage src="https://picsum.photos/seed/peerLarge/200/200" alt="Peer Avatar" data-ai-hint="friendly avatar"/>
+                            <AvatarFallback className="text-2xl sm:text-3xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
+                        </Avatar>
+                        <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
+                     </div>
+                   )}
+                </CardContent>
+            </div>
+
+            {/* Local Video (You) - Takes full width in single column or bottom in two rows */}
+            <div className={cn(
+                "relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up overflow-hidden min-h-0",
+                 isFullScreen ? "md:col-span-2 md:row-span-1" : "md:row-span-1"
+            )}>
+                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                    <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
+                    <UserCircle className="w-4.5 h-4.5" /> {isScreenShared ? "Your Screen" : "You"}
+                    </CardTitle>
+                    <div className="absolute top-2 right-2 flex items-center gap-1 sm:gap-1.5">
+                    {isMuted && <MicOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />}
+                    {isVideoOff && !isScreenShared && <VideoOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />}
+                    {!isMuted && <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
+                    {!isVideoOff && !isScreenShared && <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+                    <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl aspect-video", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
+                    {hasCameraPermission === null && !isScreenShared && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                        <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-spin mb-1 sm:mb-2" />
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Camera...</p>
+                    </div>
+                    )}
+                    {hasCameraPermission === false && !isScreenShared && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                        <Avatar className="w-16 h-16 sm:w-20 sm:h-20 shadow-md border border-primary/30 animate-pulse-gentle">
+                        <AvatarImage src="https://picsum.photos/seed/myAvatarSmall/100/100" alt="My Avatar" data-ai-hint="professional avatar"/>
+                        <AvatarFallback className="text-xl sm:text-2xl bg-primary/25 text-primary rounded-full">ME</AvatarFallback>
+                        </Avatar>
+                        <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-destructive font-semibold">No Camera</p>
+                    </div>
+                    )}
+                    {hasCameraPermission === true && isVideoOff && !isScreenShared && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
+                        <Avatar className="w-16 h-16 sm:w-20 sm:h-20 shadow-md border border-primary/30">
+                            <AvatarImage src="https://picsum.photos/seed/myAvatarSmall/100/100" alt="My Avatar" data-ai-hint="professional avatar"/>
+                        <AvatarFallback className="text-xl sm:text-2xl bg-primary/25 text-primary rounded-full">ME</AvatarFallback>
+                        </Avatar>
+                        <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">Camera Off</p>
+                    </div>
+                    )}
+                </CardContent>
+            </div>
+        </div>
+
+
+        {/* Chat Area - Takes 1 column */}
+        <Card className="flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-fade-in-up delay-300 overflow-hidden min-h-0 md:col-span-1">
+            <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm rounded-t-xl border-b border-border/40">
                 <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
-                <UserCircle className="w-4.5 h-4.5" /> {isScreenShared ? "Your Screen" : "You"}
+                    <MessageSquare className="w-4.5 h-4.5" /> Chat
                 </CardTitle>
-                <div className="absolute top-2 right-2 flex items-center gap-1 sm:gap-1.5">
-                {isMuted && <MicOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />}
-                {isVideoOff && !isScreenShared && <VideoOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />}
-                {!isMuted && <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
-                {!isVideoOff && !isScreenShared && <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
-                </div>
             </CardHeader>
-            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
-                <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl aspect-video", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
-                {hasCameraPermission === null && !isScreenShared && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
-                    <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-spin mb-1 sm:mb-2" />
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Camera...</p>
-                </div>
-                )}
-                {hasCameraPermission === false && !isScreenShared && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
-                    <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-md border border-primary/30 animate-pulse-gentle">
-                    <AvatarImage src="https://picsum.photos/seed/myAvatarLarge/200/200" alt="My Avatar" data-ai-hint="professional avatar"/>
-                    <AvatarFallback className="text-2xl sm:text-3xl bg-primary/25 text-primary rounded-full">ME</AvatarFallback>
-                    </Avatar>
-                    <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-destructive font-semibold">No Camera</p>
-                </div>
-                )}
-                {hasCameraPermission === true && isVideoOff && !isScreenShared && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
-                    <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-md border border-primary/30">
-                        <AvatarImage src="https://picsum.photos/seed/myAvatarLarge/200/200" alt="My Avatar" data-ai-hint="professional avatar"/>
-                    <AvatarFallback className="text-2xl sm:text-3xl bg-primary/25 text-primary rounded-full">ME</AvatarFallback>
-                    </Avatar>
-                    <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">Camera Off</p>
-                </div>
-                )}
-            </CardContent>
-        </div>
-
-        {/* Peer Video - Column 2 */}
-        <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-150 overflow-hidden min-h-0">
-            <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-              <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
-                <Users className="w-4.5 h-4.5" /> Peer
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
-               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl aspect-video"></video>
-               {(!remoteVideoRef.current || !remoteVideoRef.current.srcObject || (remoteVideoRef.current?.srcObject && remoteVideoRef.current.srcObject.getVideoTracks().every(t => !t.enabled || t.muted))) && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
-                    <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-lg border-2 border-accent/30">
-                        <AvatarImage src="https://picsum.photos/seed/peerLarge/200/200" alt="Peer Avatar" data-ai-hint="friendly avatar"/>
-                        <AvatarFallback className="text-2xl sm:text-3xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
-                    </Avatar>
-                    <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">Waiting for peer...</p>
-                 </div>
-               )}
-            </CardContent>
-        </div>
-
-        {/* Tabs/Chat - Column 3 */}
-        <Card className="flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-fade-in-up delay-300 overflow-hidden min-h-0">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex flex-col h-full">
-                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 p-1.5 bg-muted/60 rounded-t-xl rounded-b-none border-b border-border/40">
-                <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                    <MessageSquare className="h-4 w-4"/> Chat
-                </TabsTrigger>
-                <TabsTrigger value="questions" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                    <ListChecks className="h-4 w-4"/> Questions
-                </TabsTrigger>
-                <TabsTrigger value="notes" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all">
-                    <FileText className="h-4 w-4"/> Notes
-                </TabsTrigger>
-                <TabsTrigger value="feedback" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
-                    <Bot className="h-4 w-4"/> AI Coach
-                </TabsTrigger>
-                <TabsTrigger value="resources" className="text-xs sm:text-sm gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 transition-all hidden sm:inline-flex">
-                    <Lightbulb className="h-4 w-4"/> Resources
-                </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
-                    <ScrollArea className="flex-1 p-3.5 bg-background/50" viewportRef={chatScrollAreaRef}>
-                    <div className="space-y-4">
-                    {messages.map((msg) => (
+            
+            <ScrollArea className="flex-1 p-3.5 bg-background/50 mt-0" viewportRef={chatScrollAreaRef}>
+                <div className="space-y-4">
+                {messages.map((msg) => (
+                    <div
+                    key={msg.id}
+                    className={cn(
+                        "flex animate-slide-in-bottom-fast",
+                        msg.sender === "me" ? "justify-end" : "justify-start"
+                    )}
+                    >
+                    <div className={cn("flex items-end gap-2 max-w-[85%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
+                        <Avatar className={cn("h-8 w-8 shadow-md", msg.sender === "me" ? "ml-1.5" : msg.sender === "ai" ? "mr-1.5" : "mr-1.5")}>
+                        {msg.sender === 'ai' ? (
+                            <AvatarFallback className="bg-gradient-to-br from-accent to-accent/70 text-accent-foreground shadow-inner-soft"><Bot className="h-4.5 w-4.5"/></AvatarFallback>
+                        ) : (
+                            <>
+                            <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed01'}/32/32` : `https://picsum.photos/seed/${'peerseed02'}/32/32`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "professional avatar" : "friendly avatar"}/>
+                            <AvatarFallback className={cn("text-xs font-semibold",msg.sender === "me" ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground" : "bg-gradient-to-br from-secondary to-secondary/70 text-secondary-foreground")}>
+                                {msg.sender === "me" ? "ME" : "P"}
+                            </AvatarFallback>
+                            </>
+                        )}
+                        </Avatar>
                         <div
-                        key={msg.id}
-                        className={cn(
-                            "flex animate-slide-in-bottom-fast",
-                            msg.sender === "me" ? "justify-end" : "justify-start"
+                        className={cn("p-3 px-3.5 rounded-xl shadow-lg",
+                            msg.sender === "me"
+                            ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-br-xl"
+                            : msg.sender === "ai"
+                            ? "bg-accent/15 text-accent-foreground border border-accent/40 rounded-bl-xl shadow-accent/10"
+                            : "bg-card text-card-foreground rounded-bl-xl border border-border/60"
                         )}
                         >
-                        <div className={cn("flex items-end gap-2 max-w-[85%]", msg.sender === "me" ? "flex-row-reverse" : "flex-row")}>
-                            <Avatar className={cn("h-8 w-8 shadow-md", msg.sender === "me" ? "ml-1.5" : msg.sender === "ai" ? "mr-1.5" : "mr-1.5")}>
-                            {msg.sender === 'ai' ? (
-                                <AvatarFallback className="bg-gradient-to-br from-accent to-accent/70 text-accent-foreground shadow-inner-soft"><Bot className="h-4.5 w-4.5"/></AvatarFallback>
-                            ) : (
-                                <>
-                                <AvatarImage src={msg.sender === 'me' ? `https://picsum.photos/seed/${'myseed01'}/32/32` : `https://picsum.photos/seed/${'peerseed02'}/32/32`} alt={msg.sender} data-ai-hint={msg.sender === 'me' ? "professional avatar" : "friendly avatar"}/>
-                                <AvatarFallback className={cn("text-xs font-semibold",msg.sender === "me" ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground" : "bg-gradient-to-br from-secondary to-secondary/70 text-secondary-foreground")}>
-                                    {msg.sender === "me" ? "ME" : "P"}
-                                </AvatarFallback>
-                                </>
-                            )}
-                            </Avatar>
-                            <div
-                            className={cn("p-3 px-3.5 rounded-xl shadow-lg",
-                                msg.sender === "me"
-                                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-br-xl"
-                                : msg.sender === "ai"
-                                ? "bg-accent/15 text-accent-foreground border border-accent/40 rounded-bl-xl shadow-accent/10"
-                                : "bg-card text-card-foreground rounded-bl-xl border border-border/60"
-                            )}
-                            >
-                            <p className="break-words leading-relaxed text-sm">{msg.text}</p>
-                            <p className={cn("text-[11px] mt-2 opacity-90", msg.sender === "me" ? "text-primary-foreground/90" : msg.sender === "ai" ? "text-accent-foreground/90" : "text-muted-foreground", "text-right")}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            {msg.sender === "ai" && msg.feedback !== undefined && (
-                                <div className="mt-2.5 pt-2 border-t border-accent/30 flex items-center justify-end space-x-2">
+                        <p className="break-words leading-relaxed text-sm">{msg.text}</p>
+                        <p className={cn("text-[11px] mt-2 opacity-90", msg.sender === "me" ? "text-primary-foreground/90" : msg.sender === "ai" ? "text-accent-foreground/90" : "text-muted-foreground", "text-right")}>
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {msg.sender === "ai" && msg.feedback !== undefined && (
+                            <div className="mt-2.5 pt-2 border-t border-accent/30 flex items-center justify-end space-x-2">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-green-500/25 text-muted-foreground hover:text-green-400", msg.feedback === "good" && "bg-green-500/25 text-green-400")} onClick={() => handleMessageFeedback(msg.id, "good")}>
+                                            <ThumbsUp className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs p-1.5"><p>Helpful</p></TooltipContent>
+                                </Tooltip>
                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-green-500/25 text-muted-foreground hover:text-green-400", msg.feedback === "good" && "bg-green-500/25 text-green-400")} onClick={() => handleMessageFeedback(msg.id, "good")}>
-                                                <ThumbsUp className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-xs p-1.5"><p>Helpful</p></TooltipContent>
-                                    </Tooltip>
-                                        <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-red-500/25 text-muted-foreground hover:text-red-400", msg.feedback === "bad" && "bg-red-500/25 text-red-400")} onClick={() => handleMessageFeedback(msg.id, "bad")}>
-                                                <ThumbsDown className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-xs p-1.5"><p>Not Helpful</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            )}
-                            </div>
-                        </div>
-                        </div>
-                    ))}
-                    {messages.length === 0 && (
-                        <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up delay-300 flex flex-col items-center">
-                        <MessageCircleQuestion className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                        No messages yet. <br/> Start the conversation or ask the AI a question!
-                        </div>
-                    )}
-                    </div>
-                </ScrollArea>
-                <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
-                    <div className="flex w-full items-center space-x-2.5">
-                    <Input
-                        type="text"
-                        placeholder="Type a message..."
-                        value={newMessage}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => {if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage();}}}
-                        className="flex-1 h-11 focus-visible:ring-accent focus-visible:border-accent rounded-lg shadow-inner-soft text-sm bg-input border-input hover:border-accent/70 focus:border-accent placeholder:text-muted-foreground/60"
-                        aria-label="New message input"
-                    />
-                    <Button type="submit" size="icon" onClick={() => handleSendMessage()} className="bg-gradient-to-br from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-lg w-11 h-11 shadow-lg hover:shadow-accent/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.03]" aria-label="Send message">
-                        <Send className="h-5 w-5 text-accent-foreground" />
-                    </Button>
-                    </div>
-                </div>
-                </TabsContent>
-
-                <TabsContent value="questions" className="flex-1 flex flex-col m-0 overflow-hidden">
-                    <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                    {isGeneratingQuestions && (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4"/>
-                            <p className="text-base">Generating AI questions...</p>
-                            <Progress value={66} className="w-3/4 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
-                        </div>
-                    )}
-                    {!isGeneratingQuestions && generatedQuestions.length === 0 && (
-                        <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
-                            <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                            No questions generated yet. <br /> Use controls in the lobby or ask AI to generate some.
-                        </div>
-                    )}
-                    {!isGeneratingQuestions && generatedQuestions.length > 0 && (
-                        <div className="space-y-3.5">
-                            {generatedQuestions.map((question, index) => (
-                                <Card key={index} className={cn("p-3.5 shadow-lg border-border/50 bg-card/90 hover:bg-card/95 transition-all duration-200 hover:shadow-primary/10", question.startsWith("Error:") || question.startsWith("Failed") ? "border-destructive/60 bg-destructive/10 shadow-destructive/10" : "", currentQuestionIndex === index && "ring-2 ring-offset-2 ring-offset-background ring-primary border-primary shadow-primary/20")}>
-                                    <div className="flex justify-between items-start gap-2">
-                                        <p className={cn("text-sm leading-relaxed flex-1", question.startsWith("Error:") || question.startsWith("Failed") ? "text-destructive font-medium" : "text-card-foreground")}>
-                                            <strong className="text-primary mr-2">{index + 1}.</strong> {question}
-                                        </p>
-                                        {currentQuestionIndex !== index && !(question.startsWith("Error:") || question.startsWith("Failed")) && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 ml-2 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md" onClick={() => handleStartQuestionTimer(index)}>
-                                                        <Timer className="h-4.5 w-4.5"/>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>Start Timer for this Question</p></TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </div>
-                                    {currentQuestionIndex === index && (
-                                        <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
-                                            <span className="text-base font-mono text-primary tabular-nums">{formatTime(questionTimerSeconds)}</span>
-                                            <Button size="sm" variant="destructive" onClick={handleStopQuestionTimer} className="gap-1.5 rounded-md">
-                                                <Pause className="h-4 w-4"/> Stop Timer
-                                            </Button>
-                                        </div>
-                                    )}
-                                        {!(question.startsWith("Error:") || question.startsWith("Failed")) && (
-                                        <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-start space-x-2">
-                                            <span className="text-xs text-muted-foreground mr-2">Rate difficulty:</span>
-                                            {["easy", "medium", "hard"].map(diff => (
-                                                <Button
-                                                    key={diff}
-                                                    variant={questionDifficulty === diff ? "default" : "outline"}
-                                                    size="sm"
-                                                    onClick={() => handleRateQuestion(diff as "easy"|"medium"|"hard")}
-                                                    className={cn("capitalize text-xs px-2.5 py-1 h-auto rounded-md",
-                                                        questionDifficulty === diff && (diff === "easy" ? "bg-green-500/80 hover:bg-green-500/90 border-green-500/80 text-white" : diff === "medium" ? "bg-yellow-500/80 hover:bg-yellow-500/90 border-yellow-500/80 text-white" : "bg-red-500/80 hover:bg-red-500/90 border-red-500/80 text-white"),
-                                                        questionDifficulty !== diff && "border-border/50 hover:border-primary/70"
-                                                    )}
-                                                >
-                                                    {diff}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                    </ScrollArea>
-                </TabsContent>
-
-                <TabsContent value="notes" className="flex-1 flex flex-col m-0 overflow-hidden">
-                <ScrollArea className="flex-1 p-0.5 bg-background/50">
-                    <Textarea
-                        placeholder="Your private notes for the interview... (Only visible to you)"
-                        value={userNotes}
-                        onChange={(e) => setUserNotes(e.target.value)}
-                        className="w-full h-full min-h-[200px] p-3.5 text-sm border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent resize-none placeholder:text-muted-foreground/60"
-                    />
-                </ScrollArea>
-                    <div className="p-3 border-t border-border/40 bg-card/70 backdrop-blur-sm rounded-b-xl">
-                    <p className="text-xs text-muted-foreground text-center">Notes are saved locally in your browser.</p>
-                </div>
-                </TabsContent>
-
-                <TabsContent value="feedback" className="flex-1 flex flex-col m-0 overflow-hidden">
-                    <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                    <div className="space-y-4">
-                        <Button onClick={handleGetAiFeedback} disabled={showAiFeedbackProcessing} className="w-full h-11 text-base font-medium bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-opacity rounded-lg shadow-lg hover:shadow-primary/30">
-                            {showAiFeedbackProcessing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Sparkles className="h-5 w-5 mr-2"/>}
-                            {showAiFeedbackProcessing ? "Analyzing Session..." : "Get AI Feedback on Session"}
-                        </Button>
-                        {overallFeedback && (
-                            <Card className="p-4 bg-card/90 border-accent/50 shadow-lg animate-scale-in">
-                                <CardHeader className="p-0 pb-2.5">
-                                    <CardTitle className="text-lg text-accent flex items-center gap-2.5"><Bot className="h-5.5 w-5.5"/> AI Coach Summary</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <p className="text-sm text-card-foreground whitespace-pre-wrap leading-relaxed">{overallFeedback}</p>
-                                </CardContent>
-                            </Card>
-                        )}
-                        {showAiFeedbackProcessing && (
-                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                                <Loader2 className="h-10 w-10 animate-spin text-primary mb-3"/>
-                                <p className="text-base">AI is processing your session...</p>
-                                <Progress value={50} className="w-4/5 mt-4 h-2.5 animate-pulse-gentle bg-primary/20" />
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 hover:bg-red-500/25 text-muted-foreground hover:text-red-400", msg.feedback === "bad" && "bg-red-500/25 text-red-400")} onClick={() => handleMessageFeedback(msg.id, "bad")}>
+                                            <ThumbsDown className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs p-1.5"><p>Not Helpful</p></TooltipContent>
+                                </Tooltip>
                             </div>
                         )}
-                            {!showAiFeedbackProcessing && !overallFeedback && (
-                                <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up flex flex-col items-center">
-                                <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
-                                Click the button above to get AI-powered feedback on your interview performance and interactions.
-                            </div>
-                            )}
+                        </div>
                     </div>
-                    </ScrollArea>
-                </TabsContent>
-                <TabsContent value="resources" className="flex-1 flex flex-col m-0 overflow-hidden">
-                <ScrollArea className="flex-1 p-3.5 bg-background/50">
-                    <div className="space-y-4">
-                        <Card className="p-4 bg-card/90 border-primary/40 shadow-lg">
-                            <CardHeader className="p-0 pb-2">
-                                <CardTitle className="text-lg text-primary flex items-center gap-2"><Lightbulb className="h-5 w-5"/> Interview Tips</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0 text-sm space-y-1.5 text-card-foreground">
-                                <p><strong className="font-medium">STAR Method:</strong> Structure answers for behavioral questions (Situation, Task, Action, Result).</p>
-                                <p><strong className="font-medium">Research:</strong> Understand the company and role you're (mock) interviewing for.</p>
-                                <p><strong className="font-medium">Ask Questions:</strong> Prepare thoughtful questions for your interviewer (peer).</p>
-                                <p><strong className="font-medium">Body Language:</strong> Maintain good posture and eye contact (even virtual!).</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="p-4 bg-card/90 border-accent/40 shadow-lg">
-                            <CardHeader className="p-0 pb-2">
-                                <CardTitle className="text-lg text-accent flex items-center gap-2"><Brain className="h-5 w-5"/> Common Topics</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0 text-sm space-y-1 text-card-foreground">
-                                <ul className="list-disc list-inside pl-1 space-y-1 marker:text-accent/80">
-                                    <li>Data Structures & Algorithms (for Tech roles)</li>
-                                    <li>Problem Solving & Critical Thinking</li>
-                                    <li>Teamwork & Collaboration</li>
-                                    <li>Strengths & Weaknesses</li>
-                                    <li>Why are you interested in this field?</li>
-                                </ul>
-                            </CardContent>
-                        </Card>
-                            <Alert className="border-primary/40 bg-primary/5">
-                            <Star className="h-5 w-5 text-primary" />
-                            <AlertTitle className="text-primary">Pro Tip!</AlertTitle>
-                            <AlertDescription className="text-primary/80">
-                                Record your mock interviews (if your peer agrees) and review them later to identify areas for improvement. Self-reflection is key!
-                            </AlertDescription>
-                        </Alert>
                     </div>
-                </ScrollArea>
-            </TabsContent>
-            </Tabs>
+                ))}
+                {messages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-12 text-sm animate-fade-in-up delay-300 flex flex-col items-center">
+                    <MessageCircleQuestion className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40"/>
+                    No messages yet. <br/> Start the conversation!
+                    </div>
+                )}
+                </div>
+            </ScrollArea>
+            
+            <div className="p-3 border-t border-b border-border/40 bg-card/80 backdrop-blur-sm">
+                <Button onClick={handleGetAiFeedback} disabled={showAiFeedbackProcessing} className="w-full h-10 text-sm font-medium bg-gradient-to-r from-primary/80 via-accent/80 to-primary/80 text-primary-foreground hover:opacity-90 transition-opacity rounded-lg shadow-lg hover:shadow-primary/20">
+                    {showAiFeedbackProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2"/>}
+                    {showAiFeedbackProcessing ? "Analyzing..." : "Get AI Session Feedback"}
+                </Button>
+                 {showAiFeedbackProcessing && (
+                    <Progress value={66} className="w-full mt-2 h-1.5 animate-pulse-gentle bg-primary/20" />
+                )}
+            </div>
+
+            <div className="p-3 border-t border-border/40 bg-card/80 backdrop-blur-sm rounded-b-xl">
+                <div className="flex w-full items-center space-x-2.5">
+                <Input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage();}}}
+                    className="flex-1 h-11 focus-visible:ring-accent focus-visible:border-accent rounded-lg shadow-inner-soft text-sm bg-input border-input hover:border-accent/70 focus:border-accent placeholder:text-muted-foreground/60"
+                    aria-label="New message input"
+                />
+                <Button type="submit" size="icon" onClick={() => handleSendMessage()} className="bg-gradient-to-br from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-lg w-11 h-11 shadow-lg hover:shadow-accent/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.03]" aria-label="Send message">
+                    <Send className="h-5 w-5 text-accent-foreground" />
+                </Button>
+                </div>
+            </div>
         </Card>
       </main>
 
@@ -1323,3 +1198,4 @@ const toggleShareScreen = async () => {
     </TooltipProvider>
   );
 }
+
