@@ -48,6 +48,8 @@ import {
   MessageCircleQuestion,
   Users2,
   Settings2,
+  Fullscreen,
+  Minimize,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -108,6 +110,7 @@ export function FresherFaceoffPage() {
 
   const [showAiFeedbackProcessing, setShowAiFeedbackProcessing] = useState(false);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
 
   const { toast } = useToast();
@@ -117,6 +120,7 @@ export function FresherFaceoffPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
 
 
   const stopStream = (stream: MediaStream | null) => {
@@ -266,7 +270,7 @@ export function FresherFaceoffPage() {
             } else { 
                 if (localStreamRef.current && localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
                     localVideoRef.current.srcObject = localStreamRef.current;
-                } else if (!localStreamRef.current && localVideoRef.current && !isVideoOff) { 
+                } else if (!localStreamRef.current && localVideoRef.current && !isVideoOff && hasCameraPermission) { // Only null if video is not off AND has permission
                      localVideoRef.current.srcObject = null; 
                 }
             }
@@ -354,9 +358,11 @@ export function FresherFaceoffPage() {
     
     await startCameraStream(false); 
     
+    // Camera permission toast is handled within startCameraStream if showErrorToast is true.
+    // Here, we check if permission was denied and video isn't intentionally off.
     if (hasCameraPermission === false && !isVideoOff) { 
         toast({
-            variant: "default",
+            variant: "default", // Less intrusive than destructive for this case
             title: "Camera Access Recommended",
             description: "Camera access is denied or unavailable. Some features might be limited. You can enable it in browser settings.",
             duration: 7000,
@@ -456,93 +462,105 @@ export function FresherFaceoffPage() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     
     setIsScreenShared(false);
+
+    if (isFullscreen) {
+        document.exitFullscreen().catch(err => console.error("Error exiting fullscreen:", err));
+        setIsFullscreen(false);
+    }
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
+    const messageText = text || newMessage;
+    if (!messageText.trim()) return;
+
     if (!isPeerConnected && sender === "me") {
-       const newMsg: Message = {
+       const pendingMsg: Message = {
         id: `msg-${Date.now()}-${Math.random()}`,
-        text: text || newMessage,
+        text: messageText,
         sender: "me",
         timestamp: new Date(),
       };
-      setMessages(prevMessages => [...prevMessages, newMsg, {id: `sys-wait-${Date.now()}`, text: "(Message will be sent once peer connects...)", sender: "system", timestamp: new Date()} ]);
+      setMessages(prevMessages => [...prevMessages, pendingMsg, {id: `sys-wait-${Date.now()}`, text: "(Message will be sent once peer connects...)", sender: "system", timestamp: new Date()} ]);
       setNewMessage("");
       return;
     }
 
+    const newMsg: Message = {
+      id: `msg-${Date.now()}-${Math.random()}`,
+      text: messageText,
+      sender: sender,
+      timestamp: new Date(),
+      feedback: sender === "ai" ? null : undefined,
+    };
+    setMessages(prevMessages => [...prevMessages, newMsg]);
 
-    const messageText = text || newMessage;
-    if (messageText.trim()) {
-      const newMsg: Message = {
-        id: `msg-${Date.now()}-${Math.random()}`,
-        text: messageText,
-        sender: sender,
-        timestamp: new Date(),
-        feedback: sender === "ai" ? null : undefined,
-      };
-      setMessages(prevMessages => [...prevMessages, newMsg]);
-
-      if (sender === "me") {
-        // Simulate peer receiving the message
-        setTimeout(() => {
-          const peerResponse: Message = {
-            id: `msg-${Date.now() + 1}-${Math.random()}`,
-            text: `Mock response: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`, 
-            sender: "peer",
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, peerResponse]);
-        }, 800);
-        setNewMessage(""); 
-      }
+    if (sender === "me") {
+      // Simulate peer receiving the message
+      setTimeout(() => {
+        const peerResponse: Message = {
+          id: `msg-${Date.now() + 1}-${Math.random()}`,
+          text: `Mock response: "${messageText.length > 25 ? messageText.substring(0,22) + '...' : messageText}"`, 
+          sender: "peer",
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, peerResponse]);
+      }, 800);
+      setNewMessage(""); 
     }
   };
 
-  const toggleMute = () => {
+const toggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
+
     if (localStreamRef.current) {
         localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
     }
-    if (screenStreamRef.current && localStreamRef.current) { // if screen sharing, ensure local mic state is also passed
-      localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !newMutedState);
-    }
+    // If screen sharing, localStreamRef contains the mic audio that needs to be controlled.
+    // screenStreamRef contains screen video, possibly screen audio (not implemented here).
+    // No need for specific screenStreamRef handling for mute if it doesn't carry mic audio.
+
     toast({ title: newMutedState ? "Microphone Muted" : "Microphone Unmuted"});
-  };
+};
 
 const toggleVideo = async () => {
     if (isScreenShared) { 
+        // Action when screen sharing: Stop screen share, then decide on camera state.
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
         setIsScreenShared(false); 
         
-        const newVideoOffStateAfterScreenShare = isVideoOff; 
-
-        if (!newVideoOffStateAfterScreenShare) { 
+        // isVideoOff reflects desired camera state *after* screen share stops.
+        // If camera was meant to be on (isVideoOff is false), try to start it.
+        if (!isVideoOff) { 
             const stream = await startCameraStream(false); 
             if (stream) {
                 toast({ title: "Screen Share Stopped, Camera On" });
+                 if (localVideoRef.current) localVideoRef.current.srcObject = stream; // Ensure UI updates
             } else {
                 toast({ title: "Screen Share Stopped, Camera Failed to Start", description: "Camera might be off or permission denied." });
-                setIsVideoOff(true); 
+                setIsVideoOff(true); // Reflect that camera couldn't start
             }
         } else { 
+             // Camera was meant to be off, so just stop screen share.
              toast({ title: "Screen Share Stopped", description: "Camera remains off." });
-             if (localStreamRef.current) { 
+             if (localStreamRef.current) { // If camera stream exists but is off
                 localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
-             }
-             if(localVideoRef.current) {
-                localVideoRef.current.srcObject = localStreamRef.current ?? null;
+                if(localVideoRef.current) {
+                   localVideoRef.current.srcObject = localStreamRef.current; // Show black frame or avatar
+                }
+             } else if (localVideoRef.current) { // No camera stream at all
+                localVideoRef.current.srcObject = null;
              }
         }
         return; 
     }
 
+    // Action when NOT screen sharing: Toggle camera on/off.
     const newVideoOffState = !isVideoOff;
     setIsVideoOff(newVideoOffState);
 
-    if (!newVideoOffState) { 
+    if (!newVideoOffState) { // Turning camera ON
         const stream = await startCameraStream(false);
         if (stream) {
             if (localVideoRef.current && localStreamRef.current) { 
@@ -552,11 +570,14 @@ const toggleVideo = async () => {
             toast({ title: "Camera On" });
         } else {
             toast({ variant: "destructive", title:"Camera Failed", description: "Could not start camera. Check permissions."});
-            setIsVideoOff(true); 
+            setIsVideoOff(true); // Reflect that camera couldn't start
         }
-    } else { 
+    } else { // Turning camera OFF
          if (localStreamRef.current) {
              localStreamRef.current.getVideoTracks().forEach(track => track.enabled = false);
+             // localVideoRef.current.srcObject = localStreamRef.current; // Show existing stream's black frame
+         } else if (localVideoRef.current) {
+            localVideoRef.current.srcObject = null; // Or clear srcObject if no stream
          }
          toast({ title: "Camera Off" });
     }
@@ -573,10 +594,13 @@ const toggleShareScreen = async () => {
         stopStream(screenStreamRef.current);
         screenStreamRef.current = null;
         setIsScreenShared(false);
+        // After stopping screen share, restore camera video if it was active
         if (localStreamRef.current && localVideoRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current; 
+            // Restore video track based on isVideoOff state
             localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !isVideoOff); 
         } else if (localVideoRef.current) { 
+            // This case implies localStreamRef was null (e.g., camera permission never granted)
             localVideoRef.current.srcObject = null; 
         }
         toast({ title: "Screen Sharing Stopped" });
@@ -698,6 +722,28 @@ const toggleShareScreen = async () => {
       toast({title: "Copied for Sharing", description: "Interview ID copied. Please paste it to your peer."});
     }
   };
+
+   const toggleFullscreen = () => {
+    if (!pageContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      pageContainerRef.current.requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
+    } else {
+      document.exitFullscreen()
+        .then(() => setIsFullscreen(false))
+        .catch(err => console.error(`Error attempting to disable full-screen mode: ${err.message} (${err.name})`));
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
 
   if (!isConnected) {
@@ -827,7 +873,7 @@ const toggleShareScreen = async () => {
   // Main connected layout
   return (
     <TooltipProvider delayDuration={150}>
-    <div className={cn("flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden")}>
+    <div ref={pageContainerRef} className={cn("flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden", isFullscreen ? "cursor-auto" : "")}>
         <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20 shrink-0">
           <div className="group flex items-center gap-2.5 animate-slide-in-left-smooth">
             <div className={cn(
@@ -861,6 +907,14 @@ const toggleShareScreen = async () => {
                   </TooltipTrigger>
                   <TooltipContent><p>Reset Timer</p></TooltipContent>
               </Tooltip>
+               <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md">
+                    {isFullscreen ? <Minimize className="h-5 w-5" /> : <Fullscreen className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>{isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}</p></TooltipContent>
+              </Tooltip>
               <div className="hidden md:flex items-center gap-2">
                   <span className="text-muted-foreground text-sm mx-1">|</span>
                   <span className="text-muted-foreground text-sm">ID:</span>
@@ -884,17 +938,40 @@ const toggleShareScreen = async () => {
               </div>
           </div>
           <div className="flex items-center gap-2 animate-slide-in-right-smooth">
-              {/* Settings Dropdown Removed */}
+             
               <Button onClick={handleDisconnect} variant="destructive" size="sm" className="font-medium rounded-lg shadow-md hover:shadow-destructive/40 transition-all duration-200 active:scale-95 transform hover:scale-[1.02] gap-1.5 h-9 px-3.5">
                 <LogOut className="h-4 w-4" /> Leave
               </Button>
           </div>
         </header>
 
-        {/* Main content: Three-column layout */}
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 p-3.5 flex-1 overflow-hidden">
-            {/* Local Video (You) - First Column */}
-            <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-100 overflow-hidden min-h-0 lg:col-span-1 h-full">
+        {/* Main content: Single vertical column layout on large screens */}
+        <main className="grid grid-cols-1 lg:grid-cols-1 gap-3.5 p-3.5 flex-1 overflow-hidden">
+            {/* Peer Video - First Row on LG */}
+            <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-100 overflow-hidden min-h-0 h-full">
+                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
+                    <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
+                        <Users className="w-4.5 h-4.5" /> Peer
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+                    <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
+                    {(!isPeerConnected || (!remoteVideoRef.current || !remoteVideoRef.current.srcObject || (remoteVideoRef.current?.srcObject && remoteVideoRef.current.srcObject.getVideoTracks().every(t => !t.enabled || t.muted)))) && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
+                            <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-lg border-2 border-accent/30 animate-pulse-gentle">
+                                <AvatarImage src="https://picsum.photos/seed/peerLarge/200/200" alt="Peer Avatar" data-ai-hint="friendly avatar" />
+                                <AvatarFallback className="text-2xl sm:text-3xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
+                            </Avatar>
+                            <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">
+                                {isPeerConnected ? "Peer's video is off or loading..." : "Waiting for peer..."}
+                            </p>
+                        </div>
+                    )}
+                </CardContent>
+            </div>
+
+            {/* Local Video (You) - Second Row on LG */}
+            <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-150 overflow-hidden min-h-0 h-full">
                 <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
                     <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
                         <UserCircle className="w-4.5 h-4.5" /> {isScreenShared ? "Your Screen" : "You"}
@@ -907,7 +984,7 @@ const toggleShareScreen = async () => {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
-                    <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || hasCameraPermission === false ? 'opacity-0' : 'opacity-100')}></video>
+                    <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || (hasCameraPermission === false && !isScreenShared) ? 'opacity-0' : 'opacity-100')}></video>
                     {hasCameraPermission === null && !isScreenShared && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
                             <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-spin mb-1 sm:mb-2" />
@@ -935,31 +1012,8 @@ const toggleShareScreen = async () => {
                 </CardContent>
             </div>
             
-            {/* Peer Video - Second Column */}
-            <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-150 overflow-hidden min-h-0 lg:col-span-1 h-full">
-                <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
-                    <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
-                        <Users className="w-4.5 h-4.5" /> Peer
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
-                    <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
-                    {(!isPeerConnected || (!remoteVideoRef.current || !remoteVideoRef.current.srcObject || (remoteVideoRef.current?.srcObject && remoteVideoRef.current.srcObject.getVideoTracks().every(t => !t.enabled || t.muted)))) && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
-                            <Avatar className="w-20 h-20 sm:w-24 sm:h-24 shadow-lg border-2 border-accent/30 animate-pulse-gentle">
-                                <AvatarImage src="https://picsum.photos/seed/peerLarge/200/200" alt="Peer Avatar" data-ai-hint="friendly avatar" />
-                                <AvatarFallback className="text-2xl sm:text-3xl bg-accent/25 text-accent rounded-full">PEER</AvatarFallback>
-                            </Avatar>
-                            <p className="mt-3 text-sm text-muted-foreground animate-pulse-gentle">
-                                {isPeerConnected ? "Peer's video is off or loading..." : "Waiting for peer..."}
-                            </p>
-                        </div>
-                    )}
-                </CardContent>
-            </div>
-
-            {/* Chat Area - Third Column */}
-            <Card className="flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-fade-in-up delay-300 overflow-hidden min-h-0 lg:col-span-1 h-full">
+            {/* Chat Area - Third Row on LG */}
+            <Card className="flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-fade-in-up delay-300 overflow-hidden min-h-0 h-full">
                 <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm rounded-t-xl border-b border-border/40 shrink-0">
                     <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
                         <MessageSquare className="w-4.5 h-4.5" /> Chat
