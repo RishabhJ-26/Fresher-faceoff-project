@@ -48,8 +48,6 @@ import {
   MessageCircleQuestion,
   Users2,
   Settings2,
-  Fullscreen,
-  Minimize,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -110,7 +108,6 @@ export function FresherFaceoffPage() {
 
   const [showAiFeedbackProcessing, setShowAiFeedbackProcessing] = useState(false);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
 
   const { toast } = useToast();
@@ -463,10 +460,6 @@ export function FresherFaceoffPage() {
     
     setIsScreenShared(false);
 
-    if (isFullscreen) {
-        document.exitFullscreen().catch(err => console.error("Error exiting fullscreen:", err));
-        setIsFullscreen(false);
-    }
   };
 
   const handleSendMessage = (text?: string, sender: "me" | "ai" = "me") => {
@@ -723,29 +716,6 @@ const toggleShareScreen = async () => {
     }
   };
 
-   const toggleFullscreen = () => {
-    if (!pageContainerRef.current) return;
-
-    if (!document.fullscreenElement) {
-      pageContainerRef.current.requestFullscreen()
-        .then(() => setIsFullscreen(true))
-        .catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
-    } else {
-      document.exitFullscreen()
-        .then(() => setIsFullscreen(false))
-        .catch(err => console.error(`Error attempting to disable full-screen mode: ${err.message} (${err.name})`));
-    }
-  };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-hero-gradient p-4 sm:p-6 font-sans animate-background-pan selection:bg-primary/30 selection:text-primary-foreground">
@@ -873,7 +843,7 @@ const toggleShareScreen = async () => {
   // Main connected layout
   return (
     <TooltipProvider delayDuration={150}>
-    <div ref={pageContainerRef} className={cn("flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden", isFullscreen ? "cursor-auto" : "")}>
+    <div ref={pageContainerRef} className={cn("flex flex-col h-screen max-h-screen bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-hidden")}>
         <header className="bg-card/95 backdrop-blur-lg p-3 shadow-md flex justify-between items-center border-b border-border/50 z-20 shrink-0">
           <div className="group flex items-center gap-2.5 animate-slide-in-left-smooth">
             <div className={cn(
@@ -907,14 +877,6 @@ const toggleShareScreen = async () => {
                   </TooltipTrigger>
                   <TooltipContent><p>Reset Timer</p></TooltipContent>
               </Tooltip>
-               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md">
-                    {isFullscreen ? <Minimize className="h-5 w-5" /> : <Fullscreen className="h-5 w-5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}</p></TooltipContent>
-              </Tooltip>
               <div className="hidden md:flex items-center gap-2">
                   <span className="text-muted-foreground text-sm mx-1">|</span>
                   <span className="text-muted-foreground text-sm">ID:</span>
@@ -945,16 +907,16 @@ const toggleShareScreen = async () => {
           </div>
         </header>
 
-        {/* Main content: Single vertical column layout on large screens */}
-        <main className="grid grid-cols-1 lg:grid-cols-1 gap-3.5 p-3.5 flex-1 overflow-hidden">
-            {/* Peer Video - First Row on LG */}
+        {/* Main content: Three vertical columns */}
+        <main className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 p-3.5 flex-1 overflow-hidden h-full">
+            {/* Peer Video - First Column */}
             <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-100 overflow-hidden min-h-0 h-full">
                 <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
                     <CardTitle className="text-sm text-center font-semibold text-accent flex items-center justify-center gap-1.5">
                         <Users className="w-4.5 h-4.5" /> Peer
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden h-full">
                     <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-b-xl"></video>
                     {(!isPeerConnected || (!remoteVideoRef.current || !remoteVideoRef.current.srcObject || (remoteVideoRef.current?.srcObject && remoteVideoRef.current.srcObject.getVideoTracks().every(t => !t.enabled || t.muted)))) && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-3 text-center rounded-b-xl">
@@ -970,7 +932,7 @@ const toggleShareScreen = async () => {
                 </CardContent>
             </div>
 
-            {/* Local Video (You) - Second Row on LG */}
+            {/* Local Video (You) - Second Column */}
             <div className="relative flex flex-col bg-card/90 backdrop-blur-md rounded-xl shadow-xl border-border/40 animate-fade-in-up delay-150 overflow-hidden min-h-0 h-full">
                 <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm absolute top-0 left-0 right-0 z-10 rounded-t-xl border-b border-border/40">
                     <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
@@ -983,7 +945,7 @@ const toggleShareScreen = async () => {
                         {!isVideoOff && !isScreenShared && <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
                     </div>
                 </CardHeader>
-                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden">
+                <CardContent className="p-0 flex-1 bg-muted/40 flex items-center justify-center mt-[41px] relative overflow-hidden h-full">
                     <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-300 rounded-b-xl", (isVideoOff && !isScreenShared && hasCameraPermission !== false) || (hasCameraPermission === false && !isScreenShared) ? 'opacity-0' : 'opacity-100')}></video>
                     {hasCameraPermission === null && !isScreenShared && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/70 backdrop-blur-sm p-2 text-center rounded-b-xl">
@@ -1012,7 +974,7 @@ const toggleShareScreen = async () => {
                 </CardContent>
             </div>
             
-            {/* Chat Area - Third Row on LG */}
+            {/* Chat Area - Third Column */}
             <Card className="flex flex-col shadow-xl rounded-xl border-border/40 transition-all duration-300 hover:shadow-popover-foreground/20 bg-card/90 backdrop-blur-md animate-fade-in-up delay-300 overflow-hidden min-h-0 h-full">
                 <CardHeader className="p-2.5 bg-card/80 backdrop-blur-sm rounded-t-xl border-b border-border/40 shrink-0">
                     <CardTitle className="text-sm text-center font-semibold text-primary flex items-center justify-center gap-1.5">
@@ -1172,5 +1134,3 @@ const toggleShareScreen = async () => {
     </TooltipProvider>
   );
 }
-
-    

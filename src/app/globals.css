@@ -67,17 +67,19 @@
     cursor: none !important; /* Hide default cursor for html/body to allow custom cursor to take over */
   }
   
-  /* When custom cursor is active, default cursor should remain hidden even in fullscreen */
-  /* If a custom cursor component manages visibility, this specific rule for fullscreen might not be needed or could conflict */
-  /* For custom cursor, ensure its visibility logic handles fullscreen correctly. */
-  /* This rule below ensures if a custom cursor ISN'T perfectly managing fullscreen, the system cursor won't reappear */
+  /* Let browser handle cursor in fullscreen mode */
   html:fullscreen, body:fullscreen {
-     cursor: none !important; 
+     cursor: auto !important; 
   }
   
-  /* Interactive elements should also hide default cursor if custom cursor is used */
+  /* Interactive elements should also hide default cursor if custom cursor is used, unless in fullscreen */
   button, a, input, textarea, select, [role="button"], [data-interactive="true"] {
     cursor: none !important; 
+  }
+
+  html:fullscreen button, html:fullscreen a, html:fullscreen input, html:fullscreen textarea, html:fullscreen select, html:fullscreen [role="button"], html:fullscreen [data-interactive="true"],
+  body:fullscreen button, body:fullscreen a, body:fullscreen input, body:fullscreen textarea, body:fullscreen select, body:fullscreen [role="button"], body:fullscreen [data-interactive="true"] {
+    cursor: auto !important;
   }
 
 
